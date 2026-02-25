@@ -1,65 +1,107 @@
-import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { registerAffiliate } from "./actions";
+import { createClient } from "@/utils/supabase/server";
 
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+export default async function AffiliateRegistrationPage({
+    searchParams,
+}: {
+    searchParams: { error?: string };
+}) {
+    const supabase = await createClient();
+
+    // Fetch default campaign configuration
+    const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('default_commission_percent, organizations(name)')
+        .eq('is_default', true)
+        .single();
+
+    const commission = campaign?.default_commission_percent || 30;
+    const orgName = campaign?.organizations?.name || "Cleverpoly";
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-[#FAFBFD] p-4 text-slate-900">
+            <Card className="w-full max-w-md bg-white border-slate-200 shadow-sm">
+                <CardHeader className="text-center space-y-4">
+                    <div className="w-12 h-12 bg-slate-900 rounded-xl mx-auto flex items-center justify-center text-white font-bold text-xl">
+                        C
+                    </div>
+                    <div>
+                        <CardTitle className="text-2xl font-bold text-slate-900">Join the {orgName} Affiliate Program</CardTitle>
+                        <CardDescription className="text-slate-500 mt-2">
+                            Earn {commission}% commission on every referral!
+                        </CardDescription>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <form className="space-y-4">
+                        {searchParams?.error && (
+                            <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-md text-sm">
+                                {searchParams.error}
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <Label htmlFor="name" className="text-slate-700">Full Name</Label>
+                            <Input
+                                id="name"
+                                name="name"
+                                type="text"
+                                placeholder="John Doe"
+                                required
+                                className="bg-white border-slate-200 text-slate-900"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email" className="text-slate-700">Email Address</Label>
+                            <Input
+                                id="email"
+                                name="email"
+                                type="email"
+                                placeholder="user@cleverpoly.store"
+                                required
+                                className="bg-white border-slate-200 text-slate-900"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                                <Label htmlFor="password" className="text-slate-700">Password</Label>
+                            </div>
+                            <Input
+                                id="password"
+                                name="password"
+                                type="password"
+                                required
+                                className="bg-white border-slate-200 text-slate-900"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="referralCode" className="text-slate-700">Custom Link Text (Referral Code)</Label>
+                            <Input
+                                id="referralCode"
+                                name="referralCode"
+                                type="text"
+                                placeholder="e.g. johndoe, chap1course"
+                                required
+                                className="bg-white border-slate-200 text-slate-900"
+                            />
+                        </div>
+
+                        <Button formAction={registerAffiliate} type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white mt-6 h-11 text-base">
+                            Sign Up as Affiliate
+                        </Button>
+                    </form>
+
+                    <div className="mt-6 text-center text-sm">
+                        <span className="text-slate-500">Already have an affiliate account? </span>
+                        <a href="/login" className="text-slate-900 font-medium hover:underline">
+                            Sign in
+                        </a>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+    );
 }

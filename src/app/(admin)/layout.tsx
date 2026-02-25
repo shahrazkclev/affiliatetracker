@@ -1,0 +1,77 @@
+import { Sidebar } from "@/components/Sidebar";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LogOut, Settings } from "lucide-react";
+import Link from "next/link";
+
+export default function AdminLayout({
+    children,
+}: Readonly<{
+    children: React.ReactNode;
+}>) {
+    return (
+        <div
+            className="dark bg-zinc-950 text-zinc-200 h-screen overflow-hidden flex relative"
+            style={{
+                backgroundImage: 'linear-gradient(to right, #27272a 1px, transparent 1px), linear-gradient(to bottom, #27272a 1px, transparent 1px)',
+                backgroundSize: '48px 48px'
+            }}
+        >
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-zinc-950/80 pointer-events-none z-0" />
+
+            <Sidebar />
+
+            <main className="flex-1 flex flex-col min-h-screen overflow-hidden relative z-10 w-full max-w-[100vw]">
+                <header className="h-16 border-b border-zinc-800/80 flex items-center px-6 justify-between bg-zinc-950/80 backdrop-blur-md z-10 shadow-sm shrink-0">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-zinc-900 border border-zinc-800 font-mono text-xs px-3 py-1.5 rounded-md text-zinc-400 shadow-inner">
+                            cleverpoly.store
+                        </div>
+                    </div>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-950 text-sm font-bold bg-gradient-to-br from-orange-400 to-orange-600 shadow-[0_0_10px_rgba(249,115,22,0.4)] hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-zinc-950">
+                                C
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 bg-zinc-950 border-zinc-800 text-zinc-200">
+                            <DropdownMenuLabel>
+                                <div className="flex flex-col space-y-1">
+                                    <p className="text-sm font-medium leading-none">My Account</p>
+                                    <p className="text-xs leading-none text-zinc-400 font-normal">
+                                        cgdora4@gmail.com
+                                    </p>
+                                </div>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-zinc-800" />
+                            <DropdownMenuItem asChild className="hover:bg-zinc-900 hover:text-white cursor-pointer">
+                                <Link href="/admin/settings" className="w-full flex items-center">
+                                    <Settings className="mr-2 h-4 w-4" />
+                                    <span>Settings</span>
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild className="hover:bg-zinc-900 hover:text-red-400 text-red-500 cursor-pointer">
+                                <form action="/auth/signout" method="post" className="w-full">
+                                    <button type="submit" className="flex items-center w-full">
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        <span>Log out</span>
+                                    </button>
+                                </form>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </header>
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative">
+                    {children}
+                </div>
+            </main>
+        </div>
+    );
+}
