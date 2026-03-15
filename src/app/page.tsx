@@ -20,7 +20,7 @@ export default async function AffiliateRegistrationPage({
         .single();
 
     const commission = campaign?.default_commission_percent || 30;
-    const orgName = campaign?.organizations?.name || "Cleverpoly";
+    const orgName = (campaign?.organizations as any)?.name || "Cleverpoly";
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#FAFBFD] p-4 text-slate-900">

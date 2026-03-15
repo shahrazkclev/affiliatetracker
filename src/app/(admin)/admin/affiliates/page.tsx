@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/utils/supabase/server";
 import { CopyButton } from "@/components/CopyButton";
+import { revalidatePath } from "next/cache";
+import { AffiliateActionsCell } from "./AffiliateActionsCell";
 
 export default async function AffiliatesPage() {
     const supabase = await createClient();
@@ -233,9 +235,7 @@ export default async function AffiliatesPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-center cursor-pointer">
-                                            <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-zinc-800 text-zinc-500 hover:text-orange-400 transition-colors mx-auto active:scale-95">
-                                                <MoreVertical className="w-4 h-4" />
-                                            </button>
+                                            <AffiliateActionsCell affiliate={affiliate} campaigns={campaigns || []} />
                                         </td>
                                     </tr>
                                 ))}
