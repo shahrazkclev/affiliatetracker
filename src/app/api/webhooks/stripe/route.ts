@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 // Stripe sends the raw body for signature verification — must disable body parsing
 export const runtime = 'nodejs';
@@ -45,7 +45,10 @@ export async function POST(req: NextRequest) {
     const rawBody = await req.text();
     const signature = req.headers.get('stripe-signature') || '';
 
-    const supabase = await createClient();
+    // Create a service-role admin client to bypass RLS since webhooks drop cookies
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const supabase = createSupabaseClient(supabaseUrl, supabaseServiceKey);
 
     // Get org's webhook secret
     const { data: org } = await supabase
