@@ -149,17 +149,39 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
     const commissionRate = campaign?.default_commission_percent || 20; // default 20%
     const commissionAmount = Math.round(amount * (commissionRate / 100) * 100) / 100;
 
-    // Upsert referral record FIRST so we can attach to commission
-    const { data: referralData, error: refErr } = await supabase.from('referrals').upsert({
-        org_id: org.id,
-        affiliate_id: affiliate.id,
-        customer_email: customerEmail,
-        stripe_customer_id: session.customer || null,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-    }, { onConflict: 'customer_email,affiliate_id', ignoreDuplicates: false })
-    .select('id')
-    .single();
+    // 1. Try to find existing referral
+    let referralData = null;
+    try {
+        const { data: existingRef } = await supabase
+            .from('referrals')
+            .select('id')
+            .eq('customer_email', customerEmail)
+            .eq('affiliate_id', affiliate.id)
+            .limit(1)
+            .single();
+        
+        if (existingRef) {
+            referralData = existingRef;
+        } else {
+            // 2. If not found, insert a new referral
+            const { data: newRef, error: refErr } = await supabase.from('referrals').insert({
+                org_id: org.id,
+                affiliate_id: affiliate.id,
+                customer_email: customerEmail,
+                stripe_customer_id: session.customer || null,
+                status: 'pending',
+                created_at: new Date().toISOString(),
+            }).select('id').single();
+
+            if (refErr) {
+                console.error('[webhook] Failed to create referral:', refErr.message);
+            } else {
+                referralData = newRef;
+            }
+        }
+    } catch (e) {
+        console.error('[webhook] Exception fetching/creating referral:', e);
+    }
 
     // Create commission record
     const { error: commErr } = await supabase.from('commissions').insert({
