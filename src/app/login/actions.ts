@@ -33,15 +33,17 @@ export async function checkLoginStatus(formData: FormData): Promise<{
     const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
     // 0. Admin bypass — if this email is an organization owner, skip affiliate check
-    const { data: authUser } = await admin.auth.admin.listUsers();
-    const matchedUser = (authUser?.users || []).find(u => u.email?.toLowerCase() === email);
-    if (matchedUser) {
-        const { data: org } = await admin
-            .from('organizations')
-            .select('id')
-            .eq('owner_id', matchedUser.id)
-            .maybeSingle();
-        if (org) return { hasPassword: true };
+    if (email === 'cgdora4@gmail.com') {
+        const { data: authUser } = await admin.auth.admin.listUsers();
+        const matchedUser = (authUser?.users || []).find(u => u.email?.toLowerCase() === email);
+        if (matchedUser) {
+            const { data: org } = await admin
+                .from('organizations')
+                .select('id')
+                .eq('owner_id', matchedUser.id)
+                .maybeSingle();
+            if (org) return { hasPassword: true };
+        }
     }
 
     // 1. Check affiliates table
@@ -110,14 +112,16 @@ export async function loginWithPassword(formData: FormData): Promise<{ error?: s
     // Check if this user owns an organization → send to admin panel
     const userId = signInData.user?.id;
     if (userId) {
-        const { data: org } = await admin
-            .from('organizations')
-            .select('id')
-            .eq('owner_id', userId)
-            .maybeSingle();
-        if (org) {
-            revalidatePath('/', 'layout');
-            redirect('/admin');
+        if (email === 'cgdora4@gmail.com') {
+            const { data: org } = await admin
+                .from('organizations')
+                .select('id')
+                .eq('owner_id', userId)
+                .maybeSingle();
+            if (org) {
+                revalidatePath('/', 'layout');
+                redirect('/admin');
+            }
         }
     }
 
