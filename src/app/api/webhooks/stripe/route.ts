@@ -116,7 +116,8 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
     const amount  = (session.amount_total || 0) / 100; // Stripe returns cents
     const currency = session.currency || 'usd';
     const stripeChargeId = session.payment_intent || session.id;
-    const customerEmail = session.customer_details?.email || session.customer_email;
+    // 100% free checkouts might drop the customer_details email, fallback to a placeholder so it doesn't violate NOT NULL constraints
+    const customerEmail = session.customer_details?.email || session.customer_email || `unknown_${session.id}@stripe.com`;
 
     if (!refCode) {
         console.log('[webhook] checkout.session.completed — no client_reference_id, skipping commission');
@@ -148,21 +149,32 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
     const commissionRate = campaign?.default_commission_percent || 20; // default 20%
     const commissionAmount = Math.round(amount * (commissionRate / 100) * 100) / 100;
 
+    // Upsert referral record FIRST so we can attach to commission
+    const { data: referralData, error: refErr } = await supabase.from('referrals').upsert({
+        org_id: org.id,
+        affiliate_id: affiliate.id,
+        customer_email: customerEmail,
+        stripe_customer_id: session.customer || null,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+    }, { onConflict: 'customer_email,affiliate_id', ignoreDuplicates: false })
+    .select('id')
+    .single();
+
     // Create commission record
     const { error: commErr } = await supabase.from('commissions').insert({
         org_id: org.id,
         affiliate_id: affiliate.id,
-        customer_email: customerEmail,
+        referral_id: referralData?.id || null,  // Link to the referral
         revenue: amount,
         commission_amount: commissionAmount,
-        amount: commissionAmount,
         stripe_charge_id: stripeChargeId,
         status: 'pending',
         created_at: new Date().toISOString(),
     });
 
     if (commErr) {
-        console.error('[webhook] Failed to create commission:', commErr.message);
+        console.error('[webhook] Failed to create commission:', commErr.message, commErr.details);
         return;
     }
 
@@ -171,18 +183,6 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
         .from('affiliates')
         .update({ total_commission: (Number(affiliate.total_commission) || 0) + commissionAmount })
         .eq('id', affiliate.id);
-
-    // Upsert referral record if we have a customer email
-    if (customerEmail) {
-        await supabase.from('referrals').upsert({
-            org_id: org.id,
-            affiliate_id: affiliate.id,
-            customer_email: customerEmail,
-            stripe_customer_id: session.customer || null,
-            status: 'pending',
-            created_at: new Date().toISOString(),
-        }, { onConflict: 'customer_email,affiliate_id', ignoreDuplicates: true });
-    }
 
     console.log(`[webhook] ✓ Commission $${commissionAmount} created for affiliate ${affiliate.id} (ref: ${refCode})`);
 }
