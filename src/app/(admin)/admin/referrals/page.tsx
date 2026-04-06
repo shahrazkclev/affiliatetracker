@@ -287,7 +287,7 @@ export default async function ReferralsPage({
                                                     ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                                                     : "bg-zinc-800 text-zinc-400 border border-zinc-700"
                                             }`}>
-                                                {ref.status || "unknown"}
+                                                {ref.status === 'active' ? 'paid' : (ref.status || "unknown")}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-center">

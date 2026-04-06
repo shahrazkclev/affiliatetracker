@@ -103,7 +103,7 @@ export default async function AffiliateReferralsPage({ searchParams }: { searchP
                 <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                            <Activity className="w-4 h-4 text-emerald-500" /> Active Users
+                            <Activity className="w-4 h-4 text-emerald-500" /> Paid Users
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -168,7 +168,7 @@ export default async function AffiliateReferralsPage({ searchParams }: { searchP
                                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wider
                                             ${ref.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                                                 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>
-                                            {ref.status || 'unknown'}
+                                            {ref.status === 'active' ? 'paid' : (ref.status || 'unknown')}
                                         </span>
                                     </td>
                                 </tr>

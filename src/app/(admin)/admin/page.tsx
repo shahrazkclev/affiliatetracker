@@ -278,7 +278,7 @@ export default async function AdminDashboard() {
                           ref.status === "active"
                             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                             : "bg-zinc-800 text-zinc-400 border-zinc-700"
-                        }`}>{ref.status || "unknown"}</span>
+                        }`}>{ref.status === 'active' ? 'paid' : (ref.status || "unknown")}</span>
                         <span className="text-[11px] text-zinc-600 font-mono whitespace-nowrap">
                           {new Date(ref.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" })}
                         </span>

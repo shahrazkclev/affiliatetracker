@@ -233,7 +233,7 @@ export default async function ReferredUsersPage({
                                                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                                                 : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
                                         }`}>
-                                            {ref.status || 'unknown'}
+                                            {ref.status === 'active' ? 'paid' : (ref.status || 'unknown')}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
