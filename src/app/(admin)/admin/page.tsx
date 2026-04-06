@@ -1,10 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/utils/supabase/server";
 import { CopyButton } from "@/components/CopyButton";
-import { Activity, Target, Users, DollarSign, Network } from "lucide-react";
+import { Activity, Target, Users, DollarSign, Network, GitMerge, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { AffiliateQuickViewButton } from "@/app/(admin)/admin/referrals/AffiliateQuickViewButton";
+import { AffiliateActionsCell } from "@/app/(admin)/admin/affiliates/AffiliateActionsCell";
+import { AdminSetupChecklist } from "./AdminSetupChecklist";
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
+
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('stripe_webhook_id')
+    .limit(1)
+    .single();
 
   // Fetch real aggregated data
   const { count: affiliatesCount } = await supabase
@@ -17,7 +27,53 @@ export default async function AdminDashboard() {
 
   const totalClicks = stats?.reduce((acc, curr) => acc + (curr.clicks || 0), 0) || 0;
   const totalCommissions = stats?.reduce((acc, curr) => acc + Number(curr.total_commission || 0), 0) || 0;
-  const estimatedRevenue = totalCommissions * 3.33; // Rough estimate since we only imported commissions
+  const estimatedRevenue = totalCommissions * 3.33;
+
+  const { data: campaigns } = await supabase.from("campaigns").select("*");
+
+  // Recent referrals — 2-step fetch (no FK on referrals.affiliate_id)
+  const { data: rawRecentReferrals } = await supabase
+    .from("referrals")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  const recentAffIds = [...new Set((rawRecentReferrals || []).map((r: any) => r.affiliate_id).filter(Boolean))];
+  const { data: recentAffiliates } = recentAffIds.length > 0
+    ? await supabase.from("affiliates").select("*").in("id", recentAffIds)
+    : { data: [] };
+
+  const recentAffMap: Record<string, any> = {};
+  for (const a of recentAffiliates || []) recentAffMap[a.id] = a;
+
+  const recentReferralsRaw = rawRecentReferrals || [];
+
+  const emailsToFetch = [...new Set(recentReferralsRaw.map((r: any) => r.customer_email || r.referred_email).filter(Boolean))];
+
+  const { data: commissionsData } = emailsToFetch.length > 0
+    ? await supabase.from("commissions").select("customer_email, revenue, amount").in("customer_email", emailsToFetch)
+    : { data: [] };
+
+  const commissionTotalsByEmail: Record<string, { rev: number; comm: number }> = {};
+  for (const c of commissionsData || []) {
+    if (c.customer_email) {
+      const e = c.customer_email.toLowerCase();
+      if (!commissionTotalsByEmail[e]) commissionTotalsByEmail[e] = { rev: 0, comm: 0 };
+      commissionTotalsByEmail[e].rev += parseFloat(c.revenue || "0");
+      commissionTotalsByEmail[e].comm += parseFloat(c.amount || "0");
+    }
+  }
+
+  const recentReferrals = recentReferralsRaw.map((r: any) => {
+    const email = (r.customer_email || r.referred_email || "").toLowerCase();
+    const totals = commissionTotalsByEmail[email] || { rev: 0, comm: 0 };
+    return {
+      ...r,
+      totalRevenue: totals.rev,
+      totalCommission: totals.comm,
+      affiliate: r.affiliate_id ? recentAffMap[r.affiliate_id] ?? null : null,
+    };
+  });
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto font-sans">
@@ -30,6 +86,13 @@ export default async function AdminDashboard() {
           <p className="text-sm text-slate-400 font-medium">System overview & performance metrics</p>
         </div>
       </div>
+
+      <AdminSetupChecklist 
+        hasCampaign={!!(campaigns && campaigns.length > 0)}
+        hasAffiliate={!!(affiliatesCount && affiliatesCount > 0)}
+        hasClicks={totalClicks > 0}
+        hasStripe={!!org?.stripe_webhook_id}
+      />
 
       {/* Geometry Nodes Vibe: Cards have solid dark backgrounds, subtle neon top borders, smooth hover scales */}
       <Card className="bg-zinc-900 border-zinc-800/80 shadow-2xl relative overflow-hidden group transition-all duration-300 hover:border-zinc-700">
@@ -163,6 +226,75 @@ export default async function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Referrals */}
+      <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl group hover:border-zinc-700 transition-colors duration-300 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-amber-500/50 via-amber-400/20 to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+        <CardHeader className="border-b border-zinc-800/50 pb-4 flex flex-row items-center justify-between">
+          <CardTitle className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+            <GitMerge className="w-4 h-4 text-amber-400" /> Recent Referrals
+          </CardTitle>
+          <Link
+            href="/admin/referrals"
+            className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors font-medium"
+          >
+            View All <ArrowRight className="w-3 h-3" />
+          </Link>
+        </CardHeader>
+        <CardContent className="p-0">
+          {!recentReferrals || recentReferrals.length === 0 ? (
+            <p className="px-6 py-8 text-center text-zinc-600 font-mono text-xs uppercase tracking-widest">No referrals yet.</p>
+          ) : (
+            <div className="divide-y divide-zinc-800/50">
+              {recentReferrals.map((ref) => {
+                const aff = ref.affiliate as any;
+                const email = ref.customer_email || ref.referred_email || "—";
+                return (
+                    <div key={ref.id} className="flex items-center justify-between px-6 py-3 hover:bg-zinc-800/20 transition-colors group/row">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          ref.status === "active" ? "bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.6)]" : "bg-zinc-600"
+                        }`} />
+                        <div className="min-w-0">
+                          <p className="font-mono text-xs text-zinc-300 truncate">{email}</p>
+                          {aff ? (
+                            <AffiliateQuickViewButton affiliate={aff} compact />
+                          ) : (
+                            <p className="text-[11px] text-zinc-500 truncate">via Unknown</p>
+                          )}
+
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0 ml-4">
+                        <div className="flex flex-col items-end border-r border-zinc-800/50 pr-4">
+                          <span className="text-[11px] font-semibold text-emerald-400/90 font-mono tracking-wide">
+                            ${(ref.totalRevenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Revenue
+                          </span>
+                          <span className="text-[10px] text-amber-500/80 font-mono font-medium tracking-wide">
+                            ${(ref.totalCommission || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Commission
+                          </span>
+                        </div>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wider border ${
+                          ref.status === "active"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                        }`}>{ref.status || "unknown"}</span>
+                        <span className="text-[11px] text-zinc-600 font-mono whitespace-nowrap">
+                          {new Date(ref.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" })}
+                        </span>
+                        {aff && (
+                          <div className="ml-2 inline-block">
+                            <AffiliateActionsCell affiliate={aff} campaigns={campaigns || []} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

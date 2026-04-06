@@ -19,7 +19,7 @@ export function PayoutActionsCell({ affiliate }: { affiliate: any }) {
         setIsLoading(true);
         const notes = formData.get('notes') as string;
         try {
-            await markPayoutAsPaid(affiliate.id, Number(affiliate.total_commission), notes);
+            await markPayoutAsPaid(affiliate.id, Number(affiliate.amount_owed), notes);
             setIsMarkPaidOpen(false);
         } catch (error) {
             console.error("Mark paid failed", error);
@@ -85,7 +85,7 @@ export function PayoutActionsCell({ affiliate }: { affiliate: any }) {
                             </div>
                             <div className="space-y-1">
                                 <span className="text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">Outstanding Balance</span>
-                                <p className="font-mono font-bold text-amber-500 drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">${Number(affiliate.total_commission).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                                <p className="font-mono font-bold text-amber-500 drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">${Number(affiliate.amount_owed).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                             </div>
                             <div className="space-y-1">
                                 <span className="text-zinc-500 font-semibold uppercase tracking-wider text-[10px]">Active Status</span>
@@ -109,7 +109,7 @@ export function PayoutActionsCell({ affiliate }: { affiliate: any }) {
                             Confirm Payout
                         </DialogTitle>
                         <DialogDescription className="text-zinc-400">
-                            You are about to mark a payload of <strong className="text-amber-400 font-mono">${Number(affiliate.total_commission).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong> to <strong className="text-zinc-200">{affiliate.name}</strong> as paid.
+                            You are about to mark a payload of <strong className="text-amber-400 font-mono">${Number(affiliate.amount_owed).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong> to <strong className="text-zinc-200">{affiliate.name}</strong> as paid.
                         </DialogDescription>
                     </DialogHeader>
                     <form action={handleMarkPaid} className="grid gap-4 py-4">

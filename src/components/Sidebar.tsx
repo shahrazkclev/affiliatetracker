@@ -2,27 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, UserPlus, DollarSign, Megaphone, MonitorPlay, Wallet, History, Settings, Network } from "lucide-react";
+import { Home, Users, UserPlus, DollarSign, Megaphone, MonitorPlay, Wallet, History, Settings, Network, GitMerge } from "lucide-react";
 
 const navGroups = [
   {
-    title: "Core System",
+    title: "Overview",
     items: [
       { icon: Home, label: "Dashboard", href: "/admin" },
       { icon: Users, label: "Affiliates", href: "/admin/affiliates" },
+      { icon: GitMerge, label: "Referrals", href: "/admin/referrals" },
       { icon: UserPlus, label: "Referred Users", href: "/admin/referred-users" },
-      { icon: DollarSign, label: "Commissions", href: "/admin/commissions" },
     ]
   },
+
   {
-    title: "Payout Engine",
+    title: "Payouts",
     items: [
       { icon: Wallet, label: "Generate Payouts", href: "/admin/payouts/generate" },
       { icon: History, label: "Payout History", href: "/admin/payouts/history" },
     ]
   },
   {
-    title: "Configuration",
+    title: "Settings",
     items: [
       { icon: Megaphone, label: "Campaigns", href: "/admin/campaigns" },
       { icon: MonitorPlay, label: "Portal Config", href: "/admin/portal-config" },
@@ -33,6 +34,12 @@ const navGroups = [
 
 export function Sidebar() {
   const pathname = usePathname();
+
+  function isActive(href: string) {
+    if (href === "/admin") return pathname === "/admin";
+    // Exact match or starts with href + "/" — prevents /admin/payouts/* matching both payout items
+    return pathname === href || pathname.startsWith(href + "/");
+  }
 
   return (
     <aside className="w-64 h-screen bg-zinc-950 text-zinc-400 flex flex-col border-r border-zinc-800 shadow-2xl z-10 relative">
@@ -55,25 +62,23 @@ export function Sidebar() {
               {group.title}
             </h3>
             {group.items.map((item) => {
-              const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/admin" && item.href !== "/portal");
-
+              const active = isActive(item.href);
               return (
                 <Link
                   key={item.label}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 relative group overflow-hidden ${isActive
-                    ? "bg-zinc-900 text-zinc-100 shadow-inner"
-                    : "hover:bg-zinc-900/50 hover:text-zinc-200 text-zinc-400"
-                    }`}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 relative group overflow-hidden ${
+                    active
+                      ? "bg-zinc-900 text-zinc-100 shadow-inner"
+                      : "hover:bg-zinc-900/50 hover:text-zinc-200 text-zinc-400"
+                  }`}
                 >
-                  {isActive && (
+                  {active && (
                     <div className="absolute left-0 top-0 w-1 h-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
                   )}
-                  <item.icon className={`w-[18px] h-[18px] transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-amber-400' : 'text-zinc-500'}`} />
+                  <item.icon className={`w-[18px] h-[18px] transition-transform duration-300 group-hover:scale-110 ${active ? 'text-amber-400' : 'text-zinc-500'}`} />
                   <span className="relative z-10">{item.label}</span>
-
-                  {/* Subtle hover gradient background */}
-                  {!isActive && (
+                  {!active && (
                     <div className="absolute inset-0 bg-gradient-to-r from-zinc-800/0 via-zinc-800/20 to-zinc-800/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-0" />
                   )}
                 </Link>

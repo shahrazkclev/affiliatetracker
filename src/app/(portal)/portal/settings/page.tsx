@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/utils/supabase/server";
+import { NotificationSettings } from "./NotificationSettings";
 
 export default async function AffiliateSettingsPage() {
     const supabase = await createClient();
@@ -82,39 +82,16 @@ export default async function AffiliateSettingsPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-semibold text-zinc-100">Notifications</CardTitle>
-                        <CardDescription className="text-zinc-500">
-                            Manage your email alerts and notifications.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <Label className="text-zinc-300 font-medium">New Referral Alerts</Label>
-                                <div className="text-sm text-zinc-500">Get notified when someone signs up using your link.</div>
-                            </div>
-                            <Switch checked={true} className="data-[state=checked]:bg-orange-600 border-zinc-700" />
-                        </div>
-                        <div className="border-t border-zinc-800/50"></div>
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <Label className="text-zinc-300 font-medium">New Commission Alerts</Label>
-                                <div className="text-sm text-zinc-500">Get notified when you earn a new commission.</div>
-                            </div>
-                            <Switch checked={true} className="data-[state=checked]:bg-orange-600 border-zinc-700" />
-                        </div>
-                        <div className="border-t border-zinc-800/50"></div>
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <Label className="text-zinc-300 font-medium">Payout Generated Alerts</Label>
-                                <div className="text-sm text-zinc-500">Get notified when your payout is processed and sent.</div>
-                            </div>
-                            <Switch checked={true} className="data-[state=checked]:bg-orange-600 border-zinc-700" />
-                        </div>
-                    </CardContent>
-                </Card>
+                <NotificationSettings 
+                    affiliateId={affiliate?.id || ''}
+                    initialPreferences={{
+                        new_referral: affiliate?.notify_new_referral ?? true,
+                        new_commission: affiliate?.notify_new_commission ?? true,
+                        payout_generated: affiliate?.notify_payout_generated ?? true,
+                        account_approved: affiliate?.notify_account_approved ?? true,
+                        account_revision: affiliate?.notify_account_revision ?? true,
+                    }}
+                />
             </div>
         </div>
     );

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Buy Button</title>
+    <!-- Importing a beautiful modern font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 
+         * PREMIUM SMART BUTTON CSS
+         * You can copy this CSS directly into your website builder (Webflow, Framer, Shopify, etc.)
+         */
+        
+        .smart-buy-button {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 64px; /* Longer to the sides */
+            border-radius: 12px; /* Rounded rectangle to match screenshot */
+            background-color: #0a0a0a; /* Pure black to match their theme */
+            color: #ffffff;
+            font-family: inherit; /* Match their site's exact font securely */
+            font-weight: 500;
+            font-size: 18px; /* Slightly larger text to match */
+            text-decoration: none;
+            overflow: hidden;
+            border: 1px solid #1a1a1a;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            /* Prevent clicking while loading */
+            pointer-events: none;
+        }
+
+        .smart-buy-button:hover {
+            background-color: #1a1a1a;
+            transform: translateY(-2px);
+        }
+
+        /* The text span inside the button */
+        .smart-buy-button .btn-text {
+            position: relative;
+            z-index: 2;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Hover effect (only visible when not loading) */
+        .smart-buy-button.is-ready {
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .smart-buy-button.is-ready:hover {
+            transform: translateY(-2px);
+            background-color: #1a1a1a;
+        }
+        
+        .smart-buy-button.is-ready:active {
+            transform: translateY(1px);
+        }
+
+        /* 
+         * LOADING STATE ANIMATIONS 
+         */
+         
+        /* We hide the text by making it transparent to preserve exact width, and shift it */
+        .smart-buy-button.is-loading .btn-text {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        /* Cursor indicates loading */
+        .smart-buy-button.is-loading {
+            cursor: wait;
+        }
+
+        /* The SVG Loader Container centered absolutely */
+        .loader-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .smart-buy-button.is-loading .loader-container {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Spinning SVG Setup */
+        .svg-spinner {
+            animation: rotateSpinner 2s linear infinite;
+            width: 24px;
+            height: 24px;
+        }
+
+        .svg-spinner .path {
+            stroke: #f59e0b; /* Amber */
+            stroke-linecap: round;
+            animation: dashSpinner 1.5s ease-in-out infinite;
+        }
+
+        @keyframes rotateSpinner {
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes dashSpinner {
+            0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+            50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+            100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+        }
+
+
+
+        /* Ready fade-in flash effect */
+        @keyframes readyFlash {
+            0% { box-shadow: 0 0 0 rgba(245, 158, 11, 0); }
+            50% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+            100% { box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
+        }
+
+        .smart-buy-button.play-ready-anim {
+            animation: readyFlash 0.8s ease-out forwards;
+        }
+
+    </style>
+</head>
+<body style="background-color: #e8e6df; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+
+    <!-- 
+      STRIPE BUY BUTTON HTML
+    -->
+    <a href="https://buy.stripe.com/4gw3fY9gkcAth0c14c" class="smart-buy-button is-loading" id="stripeBuyBtn">
+        <span class="btn-text">Buy Now</span>
+        <div class="loader-container">
+            <svg class="svg-spinner" viewBox="0 0 50 50">
+                <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+            </svg>
+        </div>
+    </a>
+
+    <!-- 
+      THE LOGIC SCRIPT 
+      Place this right below your button or in your footer.
+    -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('stripeBuyBtn');
+            const btnText = btn.querySelector('.btn-text');
+            
+            // --- Configuration ---
+            // Max time we allow it to load before giving up and activating the button anyway (safety net)
+            const MAX_TIMEOUT_MS = 5000; 
+            
+            let isReady = false;
+
+            // This function unlocks the button and transitions the animation
+            const activateButton = () => {
+                if (isReady) return; // Prevent unlocking twice
+                isReady = true;
+                
+                // Change UI state
+                btn.classList.remove('is-loading');
+                btn.classList.add('is-ready');
+                btn.classList.add('play-ready-anim');
+            };
+
+            // Start a safety timeout. If the tracker fails to load after 5 seconds, 
+            // we unlock the button automatically so your customer can still buy!
+            const fallbackTimeout = setTimeout(() => {
+                console.log("[Smart Btn] Tracker timed out, unlocking button safely.");
+                activateButton();
+            }, MAX_TIMEOUT_MS);
+
+            // --- The Tracker Detection Logic ---
+            // Periodically check if the tracking script has finished modifying the URL.
+            // We know it's done if either:
+            // 1. The href has "client_reference_id" in it (success!)
+            // 2. OR, a global flag window.TRACKER_FINISHED is set by your script (if no affiliate is found).
+            
+            const checkInterval = setInterval(() => {
+                const currentHref = btn.getAttribute('href');
+                
+                // Condition A: Successfully modified link
+                if (currentHref.includes('client_reference_id=')) {
+                    clearInterval(checkInterval);
+                    clearTimeout(fallbackTimeout);
+                    activateButton();
+                } 
+                // Condition B: The custom tracker fired an event saying it finished (even if 0 affiliates found)
+                else if (window.AFFILIATE_TRACKER_READY === true) {
+                    clearInterval(checkInterval);
+                    clearTimeout(fallbackTimeout);
+                    activateButton();
+                }
+            }, 100); // Checks every 100ms
+        });
+    </script>
+</body>
+</html>

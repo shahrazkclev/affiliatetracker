@@ -1,0 +1,159 @@
+<script async src="https://cdn.promotekit.com/promotekit.js" data-promotekit="6305dd18-699e-4e41-ac0c-9eaefdf0e7ce"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Configuration
+    const CONFIG = {
+        maxRetries: 15,          // Increased retries for protection scenarios
+        retryInterval: 300,      // Increased interval
+        promotekitDelay: 2000,   // Increased delay for protected environments
+        initialDelay: 500,       // Initial delay before first check
+        debug: true
+    };
+
+    // Debug logging function
+    function log(message, data = '') {
+        if (CONFIG.debug) {
+            console.log(`[Affiliate Tracker] ${message}`, data);
+        }
+    }
+
+    // Check if script is blocked or delayed
+    function isPromotekitBlocked() {
+        return typeof window.promotekit === 'undefined';
+    }
+
+    // Validate referral ID with enhanced checking
+    function isValidReferralId(referralId) {
+        return typeof referralId === 'string' && 
+               referralId.length > 0 && 
+               referralId !== 'undefined' && 
+               referralId !== 'null';
+    }
+
+    // Update single URL with referral ID
+    function updateUrl(url, referralId) {
+        try {
+            if (!url.includes("client_reference_id")) {
+                const separator = url.includes('?') ? '&' : '?';
+                return `${url}${separator}client_reference_id=${referralId}`;
+            }
+            return url;
+        } catch (error) {
+            log('Error updating URL:', error);
+            return url;
+        }
+    }
+
+    // Main function to update URLs and attributes
+    function updateLinksWithReferral(referralId) {
+        try {
+            if (!isValidReferralId(referralId)) {
+                log('Invalid referral ID, skipping updates');
+                return;
+            }
+
+            log('Updating links with referral ID:', referralId);
+
+            // Update Stripe URLs
+            $('a[href^="https://buy.stripe.com/"]').each(function() {
+                const oldUrl = $(this).attr("href") || '';
+                if (oldUrl) {
+                    const newUrl = updateUrl(oldUrl, referralId);
+                    $(this).attr("href", newUrl);
+                    log('Updated Stripe URL');
+                }
+            });
+
+            // Update pricing tables and buy buttons
+            const elementsToUpdate = $("[pricing-table-id], [buy-button-id]");
+            if (elementsToUpdate.length > 0) {
+                elementsToUpdate.attr("client-reference-id", referralId);
+                log('Updated elements with client-reference-id');
+            }
+
+            // Store successful referral ID
+            if (window.localStorage) {
+                localStorage.setItem('lastReferralId', referralId);
+                localStorage.setItem('referralIdTimestamp', Date.now());
+                log('Stored referral ID in localStorage');
+            }
+
+        } catch (error) {
+            log('Error in updateLinksWithReferral:', error);
+        }
+    }
+
+    // Enhanced check for referral ID with protection handling
+    function checkReferralId(retryCount = 0) {
+        try {
+            // Check if script is blocked
+            if (isPromotekitBlocked() && retryCount === 0) {
+                log('Promotekit appears to be blocked, waiting longer...');
+                setTimeout(() => checkReferralId(retryCount), CONFIG.promotekitDelay);
+                return;
+            }
+
+            // Try multiple sources for referral ID
+            const referralId = window.promotekit_referral || 
+                             (window.promotekit && window.promotekit.referral) ||
+                             localStorage.getItem('lastReferralId');
+
+            if (isValidReferralId(referralId)) {
+                log('Found valid referral ID:', referralId);
+                updateLinksWithReferral(referralId);
+                return;
+            }
+
+            // Implement exponential backoff for retries
+            if (retryCount < CONFIG.maxRetries) {
+                const nextRetryDelay = CONFIG.retryInterval * Math.pow(1.2, retryCount);
+                log(`Retry attempt ${retryCount + 1} of ${CONFIG.maxRetries} in ${nextRetryDelay}ms`);
+                setTimeout(() => checkReferralId(retryCount + 1), nextRetryDelay);
+                return;
+            }
+
+            log('Failed to get referral ID after all attempts');
+
+        } catch (error) {
+            log('Error in checkReferralId:', error);
+        }
+    }
+
+    // Initialize with protection handling
+    try {
+        log('Initializing affiliate tracking with protection handling');
+        
+        // Initial delay before first check
+        setTimeout(() => {
+            checkReferralId();
+            
+            // Set up mutation observer for dynamic content
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.addedNodes.length) {
+                        const referralId = window.promotekit_referral || 
+                                         (window.promotekit && window.promotekit.referral) ||
+                                         localStorage.getItem('lastReferralId');
+                        
+                        if (isValidReferralId(referralId)) {
+                            updateLinksWithReferral(referralId);
+                        }
+                    }
+                });
+            });
+
+            observer.observe(document.body, { 
+                childList: true, 
+                subtree: true 
+            });
+            
+            log('Initialized mutation observer');
+            
+        }, CONFIG.initialDelay);
+
+    } catch (error) {
+        log('Error during initialization:', error);
+    }
+});
+</script>

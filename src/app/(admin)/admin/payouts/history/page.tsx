@@ -1,23 +1,63 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, History, Download, ReceiptText } from "lucide-react";
+import { Download, History, ReceiptText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/utils/supabase/server";
+import { Pagination } from "@/components/Pagination";
+import { Suspense } from "react";
+import { AdminSearchBar } from "@/components/AdminSearchBar";
+import { PayoutHistoryTable } from "./PayoutHistoryTable";
+import { ExportCsvButton } from "@/components/ExportCsvButton";
 
-export default async function PayoutHistoryPage() {
+
+const PAGE_SIZE = 25;
+export const dynamic = 'force-dynamic';
+
+export default async function PayoutHistoryPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ page?: string; q?: string }>;
+}) {
     const supabase = await createClient();
+    const params = await searchParams;
+    const currentPage = Math.max(1, parseInt(params.page || "1", 10));
+    const searchQuery = (params.q || "").trim();
 
-    // Fetch payout history
-    const { data: payouts } = await supabase
-        .from('payouts')
-        .select(`
-            *,
-            affiliate:affiliates(name, email, payout_email)
-        `)
-        .order('created_at', { ascending: false });
+    // If searching, find matching affiliate IDs first
+    let affiliateIdFilter: string[] | null = null;
+    if (searchQuery) {
+        const { data: matched } = await supabase
+            .from("affiliates")
+            .select("id")
+            .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+        affiliateIdFilter = (matched || []).map((a) => a.id);
+    }
 
-    const totalPaid = payouts?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-    const payoutCount = payouts?.length || 0;
+    let query = supabase
+        .from("payouts")
+        .select("id, amount, currency, notes, created_at, period, affiliate_id", { count: "exact" })
+        .order("created_at", { ascending: false });
+
+    if (searchQuery) {
+        const conditions: string[] = [`notes.ilike.%${searchQuery}%`];
+        if (affiliateIdFilter && affiliateIdFilter.length > 0) {
+            conditions.push(`affiliate_id.in.(${affiliateIdFilter.join(",")})`);
+        }
+        query = query.or(conditions.join(","));
+    }
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const { data: payouts, count: totalFiltered } = await query.range(start, start + PAGE_SIZE - 1);
+
+    // Summary totals always from unfiltered table
+    const { data: allPayouts } = await supabase.from("payouts").select("amount");
+    const totalPaid = allPayouts?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+    const payoutCount = allPayouts?.length || 0;
+
+    // Affiliate lookup map
+    const { data: affiliates } = await supabase
+        .from("affiliates")
+        .select("id, name, email, payout_email");
+    const affiliateMap: Record<string, { name: string; email: string; payout_email: string }> = {};
+    for (const a of affiliates || []) affiliateMap[a.id] = a;
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto font-sans">
@@ -33,25 +73,28 @@ export default async function PayoutHistoryPage() {
                 </div>
             </div>
 
+            {/* Stripe fee notice — payouts page only */}
+            <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/15 rounded-lg px-4 py-3 text-xs text-amber-400/80">
+                <svg className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 110 20A10 10 0 0112 2z" /></svg>
+                <span>Payouts are subject to a <strong className="text-amber-400 font-semibold">3.5% Stripe transfer fee</strong> deducted from gross commission. Example: if you earn $100.00, you receive <strong className="text-amber-400 font-semibold">$96.50 net</strong>.</span>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="bg-zinc-900 border-zinc-800/80 shadow-2xl relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                            Total Historical Disbursements
-                        </CardTitle>
+                        <CardTitle className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Total Historical Disbursements</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold text-emerald-400 font-mono tracking-tight drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">
-                            ${totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ${totalPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </div>
                     </CardContent>
                 </Card>
-
                 <Card className="bg-zinc-900 border-zinc-800/80 shadow-2xl relative overflow-hidden group">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                            <ReceiptText className="w-4 h-4 text-zinc-500" /> Execution Cycles
+                            <ReceiptText className="w-4 h-4 text-zinc-500" /> Total Payouts
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -62,75 +105,31 @@ export default async function PayoutHistoryPage() {
                 </Card>
             </div>
 
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-zinc-900 border border-zinc-800/80 p-4 rounded-xl shadow-lg relative overflow-hidden group">
+            {/* Search + Export row */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-zinc-900 border border-zinc-800/80 p-4 rounded-xl shadow-lg relative overflow-hidden">
                 <div className="absolute left-0 top-0 h-full w-[2px] bg-gradient-to-b from-transparent via-zinc-600 to-transparent" />
-
-                <div className="relative w-full md:w-[400px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                    <Input
-                        placeholder="Search by ID, affiliate, or transaction memo..."
-                        className="pl-10 h-10 bg-zinc-950 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-1 focus-visible:ring-zinc-600 rounded-lg text-sm font-mono"
+                <Suspense fallback={null}>
+                    <AdminSearchBar
+                        initialQuery={searchQuery}
+                        placeholder="Search by affiliate, email, or notes..."
+                        accentColor="zinc"
                     />
-                </div>
+                </Suspense>
+                <ExportCsvButton
+                    href={`/api/admin/export/payouts${searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : ''}`}
+                />
 
-                <Button variant="outline" className="w-full md:w-auto bg-zinc-950 border-zinc-800 text-zinc-300 hover:bg-zinc-800 hover:text-white">
-                    <Download className="w-4 h-4 mr-2" /> Export CSV Record
-                </Button>
             </div>
 
-            <div className="bg-zinc-900 border border-zinc-800/80 rounded-xl overflow-hidden shadow-2xl relative">
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-zinc-600/30 to-transparent" />
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-zinc-300">
-                        <thead className="bg-zinc-950/80 border-b border-zinc-800/80 text-zinc-400 uppercase tracking-wider text-[11px] font-semibold">
-                            <tr>
-                                <th className="px-6 py-4 whitespace-nowrap">Execution Date</th>
-                                <th className="px-6 py-4 whitespace-nowrap">Affiliate Beneficiary</th>
-                                <th className="px-6 py-4 whitespace-nowrap">Transaction Memo</th>
-                                <th className="px-6 py-4 whitespace-nowrap text-right">Disbursed Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-800/50">
-                            {(!payouts || payouts.length === 0) && (
-                                <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center text-zinc-500 font-mono text-xs uppercase tracking-widest bg-zinc-950/30">
-                                        No historical payouts recorded yet.
-                                    </td>
-                                </tr>
-                            )}
-                            {payouts?.map((payout) => (
-                                <tr key={payout.id} className="hover:bg-zinc-800/30 transition-colors duration-200 group relative">
-                                    <td className="w-0 p-0 absolute left-0 top-0 h-full">
-                                        <div className="w-0.5 h-full bg-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </td>
-                                    <td className="px-6 py-4 border-r border-zinc-800/30">
-                                        <div className="text-zinc-300 font-medium">
-                                            {new Date(payout.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
-                                        </div>
-                                        <div className="text-zinc-600 text-xs font-mono mt-0.5">
-                                            {new Date(payout.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="font-medium text-zinc-200">{payout.affiliate?.name || 'Unknown Affiliate'}</div>
-                                        <div className="text-zinc-500 text-xs font-mono truncate w-48">{payout.affiliate?.payout_email || payout.affiliate?.email}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="font-mono text-xs text-zinc-400 bg-zinc-950 border border-zinc-800 px-2 py-1 rounded inline-block max-w-[200px] truncate" title={payout.notes || payout.id}>
-                                            {payout.notes || `txn_${payout.id.substring(0, 8)}`}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right font-medium">
-                                        <span className="text-zinc-300 font-mono text-base">
-                                            ${Number(payout.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <PayoutHistoryTable
+                payouts={payouts || []}
+                affiliateMap={affiliateMap}
+                searchQuery={searchQuery}
+            />
+
+            <Suspense fallback={null}>
+                <Pagination totalCount={totalFiltered ?? 0} pageSize={PAGE_SIZE} currentPage={currentPage} />
+            </Suspense>
         </div>
     );
 }

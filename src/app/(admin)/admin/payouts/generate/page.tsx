@@ -1,11 +1,11 @@
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Calendar as CalendarIcon, Zap, CheckCircle2 } from "lucide-react";
+import { Zap, BellRing } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { PayoutDatePicker } from "@/components/PayoutDatePicker";
-import { PayoutActionsCell } from "./PayoutActionsCell";
+import { PayoutBatchSelector } from "./PayoutBatchSelector";
+import { PayoutRequestsPanel } from "./PayoutRequestsPanel";
+
+
 export default async function GeneratePayoutsPage({
     searchParams,
 }: {
@@ -14,15 +14,57 @@ export default async function GeneratePayoutsPage({
     const supabase = await createClient();
     const params = await searchParams;
 
-    // Default to today if no date provided
-    const targetDate = params.date ? new Date(params.date) : new Date();
+    const isAllTime = params.date === 'all' || !params.date;
+    const targetDate = params.date && params.date !== 'all' ? new Date(params.date) : new Date();
 
-    // Fetch affiliates that actually have commission
-    const { data: affiliates } = await supabase
-        .from('affiliates')
-        .select('*')
-        .gt('total_commission', 0)
-        .order('total_commission', { ascending: false });
+    // Fetch affiliates
+    const { data: allAffiliates } = await supabase.from('affiliates').select('*');
+
+    // Fetch ALL commissions
+    const { data: commissions, error: comErr } = await supabase.from('commissions').select('affiliate_id, commission_amount, created_at');
+    if (comErr) console.error("GeneratePayouts Commissions err:", comErr);
+
+    // Fetch payouts to calculate settled status dynamically
+    const { data: payouts } = await supabase.from('payouts').select('affiliate_id, created_at');
+
+    const payoutMap: Record<string, Date[]> = {};
+    for (const p of payouts || []) {
+        if (!payoutMap[p.affiliate_id]) payoutMap[p.affiliate_id] = [];
+        payoutMap[p.affiliate_id].push(new Date(p.created_at));
+    }
+
+    // Calculate dynamic amount owed per affiliate precisely against targetDate
+    const pendingSumMap: Record<string, number> = {};
+    for (const c of commissions || []) {
+        const commDate = new Date(c.created_at);
+        // Exclude commissions created after the target Payout Date threshold
+        if (!isAllTime && commDate > targetDate) continue;
+
+        // Check if a payout executed after this commission was logged
+        const dates = payoutMap[c.affiliate_id] || [];
+        const settled = dates.some(pd => pd >= commDate);
+        if (!settled) {
+            pendingSumMap[c.affiliate_id] = (pendingSumMap[c.affiliate_id] || 0) + Number(c.commission_amount);
+        }
+    }
+
+    // Compute final affiliates to render
+    const affiliates = (allAffiliates || [])
+        .map(a => ({
+            ...a,
+            amount_owed: pendingSumMap[a.id] || 0,
+        }))
+        .filter(a => a.amount_owed > 0)
+        .sort((a, b) => b.amount_owed - a.amount_owed);
+
+    // Fetch pending payout requests from affiliates
+    const { data: payoutRequests } = await supabase
+        .from('payout_requests')
+        .select('id, amount, created_at, status, affiliate:affiliates(name, email, payout_threshold, total_commission)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto font-sans">
@@ -36,29 +78,31 @@ export default async function GeneratePayoutsPage({
                 </div>
             </div>
 
+            {/* Payout Requests — interactive panel with Paid/Dismiss actions */}
+            <PayoutRequestsPanel requests={(payoutRequests || []) as any} />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="bg-zinc-900 border-zinc-800/80 shadow-2xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl" />
                     <CardHeader>
-                        <CardTitle className="text-lg font-semibold text-zinc-200">Execution Window</CardTitle>
+                        <CardTitle className="text-lg font-semibold text-zinc-200">Payout Date</CardTitle>
                         <CardDescription className="text-zinc-500 text-sm">
-                            Process interval defined in <a href="#" className="text-amber-400 hover:text-amber-300 transition-colors hover:underline">campaign config</a>.
+                            Target date for this payout batch.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center gap-4 bg-zinc-950 border border-zinc-800 p-3 rounded-lg w-max relative z-20">
-                            <span className="text-zinc-400 text-xs font-mono uppercase tracking-wider">Target Date</span>
-
-                            <PayoutDatePicker initialDate={targetDate} />
+                            <span className="text-zinc-400 text-xs font-mono uppercase tracking-wider">Date</span>
+                            <PayoutDatePicker initialDate={targetDate} isAllTime={isAllTime} />
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card className="bg-zinc-900 border-zinc-800/80 shadow-2xl relative overflow-hidden">
                     <CardHeader>
-                        <CardTitle className="text-lg font-semibold text-zinc-200">Threshold Requirement</CardTitle>
+                        <CardTitle className="text-lg font-semibold text-zinc-200">Minimum Threshold</CardTitle>
                         <CardDescription className="text-zinc-500 text-sm">
-                            Nodes must hit this threshold to trigger a payout event.
+                            Affiliates must meet this amount to be included.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -69,60 +113,7 @@ export default async function GeneratePayoutsPage({
                 </Card>
             </div>
 
-            <div className="flex items-center justify-between pt-2 mb-4">
-                <a href="#" className="text-amber-400/80 hover:text-amber-400 text-xs font-mono tracking-wide hover:underline transition-colors uppercase">View Docs: Payout Routing</a>
-                <Button disabled className="bg-zinc-800/50 text-zinc-500 border border-zinc-800 tracking-wide font-medium shadow-none">
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Execute Selected
-                </Button>
-            </div>
-
-            <div className="bg-zinc-900 border border-zinc-800/80 rounded-xl overflow-hidden shadow-2xl relative">
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
-                <table className="w-full text-left text-sm text-zinc-300">
-                    <thead className="bg-zinc-950/80 border-b border-zinc-800/80 text-zinc-400 uppercase tracking-wider text-[11px] font-semibold">
-                        <tr>
-                            <th className="px-6 py-4 w-12"><Checkbox className="border-zinc-600 rounded" /></th>
-                            <th className="px-6 py-4">Node Target</th>
-                            <th className="px-6 py-4">Routing Email</th>
-                            <th className="px-6 py-4">Payload Value</th>
-                            <th className="px-6 py-4">Cycle</th>
-                            <th className="px-6 py-4 w-12"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800/50">
-                        {affiliates?.length === 0 && (
-                            <tr className="bg-zinc-950/30">
-                                <td colSpan={6} className="px-6 py-12 text-center text-zinc-500 font-mono text-xs uppercase tracking-widest">
-                                    Zero pending payloads detected
-                                </td>
-                            </tr>
-                        )}
-                        {affiliates?.map((affiliate) => (
-                            <tr key={affiliate.id} className="hover:bg-zinc-800/30 transition-colors duration-200 group relative">
-                                <td className="w-0 p-0 absolute left-0 top-0 h-full">
-                                    <div className="w-0.5 h-full bg-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </td>
-                                <td className="px-6 py-4">
-                                    <Checkbox className="border-zinc-600 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500 rounded" />
-                                </td>
-                                <td className="px-6 py-4 text-zinc-200 font-medium flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-amber-500/40"></div>
-                                    {affiliate.name}
-                                </td>
-                                <td className="px-6 py-4 text-zinc-500 font-mono text-xs">{affiliate.payout_email || '-'}</td>
-                                <td className="px-6 py-4 font-mono font-bold text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.2)]">
-                                    ${Number(affiliate.total_commission).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                </td>
-                                <td className="px-6 py-4 text-zinc-500 font-mono text-xs">2026-01-31</td>
-                                <td className="px-6 py-4 text-center">
-                                    <PayoutActionsCell affiliate={affiliate} />
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            <PayoutBatchSelector affiliates={affiliates} />
         </div>
     );
 }

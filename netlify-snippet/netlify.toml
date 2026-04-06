@@ -1,0 +1,14 @@
+[build]
+  publish = "."
+  command = ""  # no build step — pure static JS
+
+[[headers]]
+  for = "/affiliate-tracker.js"
+  [headers.values]
+    Cache-Control     = "public, max-age=3600"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
