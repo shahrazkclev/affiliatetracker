@@ -53,6 +53,7 @@ export function StripeConnectCard() {
             const res = await saveStripeConnection(fd);
             if (res.success) {
                 setConnectMsg({ ok: true, text: res.message || 'Connected successfully!' });
+                setKeyInput('');
                 await fetchStatus();
             } else {
                 setConnectMsg({ ok: false, text: res.error || 'Failed to connect' });
