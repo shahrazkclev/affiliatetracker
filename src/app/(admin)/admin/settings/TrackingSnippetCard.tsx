@@ -14,7 +14,7 @@ const trackingSnippetCode = `<!-- Affiliate Tracking Script -->
     timestampKey: 'cpoly_ref_ts',
     ttlDays: 30,
     debug: false,
-    trackClickUrl: 'https://affiliates.cleverpoly.store/api/track-click',
+    trackClickUrl: 'https://partners.cleverpoly.store/api/track-click',
     trackClickEnabled: true
   };
 

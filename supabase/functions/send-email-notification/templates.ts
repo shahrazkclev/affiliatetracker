@@ -47,7 +47,7 @@ function emailShell(title: string, logoUrl: string | undefined, body: string, lo
             <td align="center" style="padding-top:32px;">
               <p style="margin:0;font-size:11px;color:#3f3f46;line-height:1.6;">
                 You're receiving this because you're part of the Cleverpoly affiliate program.<br />
-                <a href="https://affiliates.cleverpoly.store/unsubscribe" style="color:#52525b;text-decoration:underline;">Unsubscribe</a>
+                <a href="https://partners.cleverpoly.store/unsubscribe" style="color:#52525b;text-decoration:underline;">Unsubscribe</a>
               </p>
             </td>
           </tr>
@@ -107,7 +107,7 @@ export const NEW_REFERRAL_TEMPLATE = (
     { label: 'Customer', value: customerEmail || 'Hidden for privacy' },
     { label: 'Status', value: 'Pending first purchase' },
   ])}
-  ${ctaButton('View in Dashboard →', 'https://affiliates.cleverpoly.store')}
+  ${ctaButton('View in Dashboard →', 'https://partners.cleverpoly.store')}
   `,
   logoHeight
 );
@@ -138,7 +138,7 @@ export const NEW_COMMISSION_TEMPLATE = (
     </tr>
   </table>
   <p style="margin:0 0 0;font-size:13px;line-height:1.6;color:#52525b;">Your earnings will be included in your next payout cycle. Log in to track your balance and referral activity.</p>
-  ${ctaButton('View Commission →', 'https://affiliates.cleverpoly.store')}
+  ${ctaButton('View Commission →', 'https://partners.cleverpoly.store')}
   `,
   logoHeight
 );
@@ -169,7 +169,7 @@ export const PAYOUT_GENERATED_TEMPLATE = (
   ${infoBox([
     { label: 'Status', value: 'Processing — arrives in 1–3 business days' },
   ])}
-  ${ctaButton('View Payout History →', 'https://affiliates.cleverpoly.store')}
+  ${ctaButton('View Payout History →', 'https://partners.cleverpoly.store')}
   `,
   logoHeight
 );
@@ -197,7 +197,7 @@ export const ACCOUNT_APPROVED_TEMPLATE = (
     <li>Earn a commission each time someone purchases using your link</li>
     <li>Track your earnings and request payouts anytime</li>
   </ul>
-  ${ctaButton('Access Dashboard →', 'https://affiliates.cleverpoly.store')}
+  ${ctaButton('Access Dashboard →', 'https://partners.cleverpoly.store')}
   `,
   logoHeight
 );
@@ -217,7 +217,7 @@ export const ACCOUNT_REVISION_TEMPLATE = (
   <h1 style="margin:0 0 14px;font-size:26px;font-weight:800;line-height:1.25;color:#fafafa;">Hi ${affiliateName},</h1>
   <p style="margin:0 0 24px;font-size:15px;line-height:1.75;color:#71717a;">We reviewed your affiliate application and need a bit more information before we can approve it.</p>
   <p style="margin:0 0 24px;font-size:15px;line-height:1.75;color:#71717a;">Please log in to your dashboard to see the details and update your application. We'll review it again as soon as you resubmit.</p>
-  ${ctaButton('Update Application →', 'https://affiliates.cleverpoly.store')}
+  ${ctaButton('Update Application →', 'https://partners.cleverpoly.store')}
   `,
   logoHeight
 );

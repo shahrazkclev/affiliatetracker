@@ -22,7 +22,7 @@
     timestampKey: 'cpoly_ref_ts',   // localStorage TTL key
     ttlDays: 30,                    // how long to remember the referral
     debug: false,                   // set true to see console logs
-    trackClickUrl: 'https://affiliates.cleverpoly.store/api/track-click',
+    trackClickUrl: 'https://partners.cleverpoly.store/api/track-click',
     trackClickEnabled: true,        // log server-side click metrics automatically
   };
 

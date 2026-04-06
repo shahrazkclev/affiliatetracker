@@ -3,7 +3,7 @@
  * Self-hosted affiliate referral tracking — drop-in replacement for promotekit.js
  *
  * Usage: Add to <head> of your website (cleverpoly.store):
- *   <script async src="https://affiliates.cleverpoly.store/tracker.js"></script>
+ *   <script async src="https://partners.cleverpoly.store/tracker.js"></script>
  *
  * How it works:
  *   1. Reads ?via=CODE or ?ref=CODE from URL
@@ -17,7 +17,7 @@
     'use strict';
 
     const CONFIG = {
-        platformUrl: 'https://affiliates.cleverpoly.store',
+        platformUrl: 'https://partners.cleverpoly.store',
         cookieName: 'cp_ref',
         cookieDays: 60,
         paramNames: ['via', 'ref', 'r'],   // URL params to check

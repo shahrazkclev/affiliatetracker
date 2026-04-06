@@ -106,10 +106,10 @@ export default async function AdminDashboard() {
         <CardContent className="pt-4">
           <div className="flex flex-col sm:flex-row gap-4 items-center">
             <div className="flex-1 bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-3 flex items-center text-zinc-300 font-mono text-sm w-full shadow-inner">
-              <span className="text-zinc-500 mr-2">https://</span>affiliates.cleverpoly.store
+              <span className="text-zinc-500 mr-2">https://</span>partners.cleverpoly.store
             </div>
             <CopyButton
-              text="https://affiliates.cleverpoly.store"
+              text="https://partners.cleverpoly.store"
               className="w-full sm:w-auto bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 shadow-lg"
             />
           </div>

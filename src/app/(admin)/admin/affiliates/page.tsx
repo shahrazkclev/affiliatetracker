@@ -95,12 +95,12 @@ export default async function AffiliatesPage({
                                     <Label htmlFor="link" className="sr-only">Link</Label>
                                     <Input
                                         id="link"
-                                        defaultValue="https://affiliates.cleverpoly.store"
+                                        defaultValue="https://partners.cleverpoly.store"
                                         readOnly
                                         className="bg-zinc-900 border-zinc-700 text-zinc-300 focus-visible:ring-orange-500"
                                     />
                                 </div>
-                                <CopyButton text="https://affiliates.cleverpoly.store" className="bg-orange-600 hover:bg-orange-500 text-black border-none" />
+                                <CopyButton text="https://partners.cleverpoly.store" className="bg-orange-600 hover:bg-orange-500 text-black border-none" />
                             </div>
                             <DialogFooter className="sm:justify-start">
                                 <p className="text-xs text-zinc-500 font-mono mt-4">
@@ -124,10 +124,10 @@ export default async function AffiliatesPage({
                 <CardContent className="pt-6">
                     <div className="flex flex-col sm:flex-row gap-4 items-center max-w-lg">
                         <div className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 flex items-center text-zinc-300 font-mono text-sm w-full shadow-inner ring-1 ring-orange-500/10 focus-within:ring-orange-500/30 transition-all">
-                            <span className="text-zinc-500 mr-2">https://</span>affiliates.cleverpoly.store
+                            <span className="text-zinc-500 mr-2">https://</span>partners.cleverpoly.store
                         </div>
                         <CopyButton
-                            text="https://affiliates.cleverpoly.store"
+                            text="https://partners.cleverpoly.store"
                             className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 shadow-md transition-all active:scale-95"
                         />
                     </div>

@@ -12,7 +12,7 @@ import Image from "next/image";
 
 export default function PortalConfigPage() {
     const [domain, setDomain] = useState("");
-    const defaultDomain = "affiliates.cleverpoly.store";
+    const defaultDomain = "partners.cleverpoly.store";
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();

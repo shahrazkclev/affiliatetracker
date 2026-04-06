@@ -12,7 +12,7 @@ import {
 import { addAffiliateDirectly } from './actions';
 import { listStripeCoupons, createStripePromoCode, createStripeCoupon } from '@/app/(admin)/admin/settings/stripe-actions';
 
-const PORTAL_URL = 'https://affiliates.cleverpoly.store';
+const PORTAL_URL = 'https://partners.cleverpoly.store';
 
 // Module-level coupon cache shared with edit dialog
 let globalCouponsCache: { id: string; name: string; percent_off: number | null; amount_off: number | null }[] | null = null;
