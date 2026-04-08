@@ -5,6 +5,7 @@ interface EmailOptions {
     to: string;
     subject: string;
     html: string;
+    _rawHtmlOverride?: boolean;
 }
 
 export async function dispatchEmail(orgId: string | null, options: EmailOptions) {
@@ -54,7 +55,7 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
         });
 
         // Scaffold standard styling directly into generic emails
-        const emailHTML = `
+        const emailHTML = options._rawHtmlOverride ? options.html : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px;">
             <div style="text-align: center; margin-bottom: 20px;">
                 <h1 style="color: ${brandColor}; margin: 0; font-size: 24px; font-weight: bold;">${brandName}</h1>
