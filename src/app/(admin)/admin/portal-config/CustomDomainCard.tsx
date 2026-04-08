@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Globe, Loader2, CircleCheck, CircleX, ChevronRight, AlertCircle, Trash2 } from "lucide-react";
 import { saveCustomDomain, getCustomDomainStatus, removeCustomDomain, switchSslToTxt } from "./cloudflare-actions";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function CustomDomainCard({ 
     currentDomain,
@@ -95,9 +96,15 @@ export function CustomDomainCard({
     }
 
     return (
-        <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
-            <CardHeader className="pb-4 border-b border-zinc-800/50">
+        <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+        >
+            <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group transition-all duration-300 hover:shadow-2xl hover:border-zinc-700/80">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
+                <CardHeader className="pb-4 border-b border-zinc-800/50 relative z-10">
                 <CardTitle className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
                     <Globe className="w-4 h-4 text-purple-400" /> Affiliate Portal Custom Domain
                 </CardTitle>
@@ -250,20 +257,23 @@ export function CustomDomainCard({
                         </div>
                     )}
 
-                    <Button
-                        type="submit"
-                        disabled={isPending || !hasConfiguredDns || !domain}
-                        className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold h-9 text-sm focus-visible:ring-purple-500 focus-visible:ring-opacity-50 disabled:opacity-50"
-                    >
-                        {isPending ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Binding Hostname...</>
-                        ) : (
-                            <><Globe className="w-4 h-4 mr-2" /> Connect Domain</>
-                        )}
-                    </Button>
+                    <motion.div whileHover={{ scale: isPending || !hasConfiguredDns || !domain ? 1 : 1.01 }} whileTap={{ scale: isPending || !hasConfiguredDns || !domain ? 1 : 0.98 }}>
+                        <Button
+                            type="submit"
+                            disabled={isPending || !hasConfiguredDns || !domain}
+                            className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold h-10 text-sm focus-visible:ring-purple-500 focus-visible:ring-opacity-50 disabled:opacity-50 transition-colors shadow-[0_0_15px_rgba(147,51,234,0.15)] hover:shadow-[0_0_20px_rgba(147,51,234,0.3)]"
+                        >
+                            {isPending ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Binding Hostname...</>
+                            ) : (
+                                <><Globe className="w-4 h-4 mr-2" /> Connect Domain</>
+                            )}
+                        </Button>
+                    </motion.div>
                 </form>
                 )}
             </CardContent>
-        </Card>
+            </Card>
+        </motion.div>
     );
 }

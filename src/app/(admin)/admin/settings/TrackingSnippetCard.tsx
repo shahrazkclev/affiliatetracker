@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Code, Terminal } from "lucide-react";
 import { CopyButton } from "@/components/CopyButton";
+import { motion } from "framer-motion";
 
 export function TrackingSnippetCard({ portalUrl }: { portalUrl: string }) {
     const trackingSnippetCode = `<!-- Affiliate Tracking Script -->
@@ -104,8 +105,15 @@ export function TrackingSnippetCard({ portalUrl }: { portalUrl: string }) {
 })();
 </script>`;
     return (
-        <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group">
-            <CardHeader className="pb-4 border-b border-zinc-800/50 flex flex-row items-center justify-between">
+        <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.1 }}
+            className="w-full"
+        >
+        <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group transition-all duration-300 hover:shadow-2xl hover:border-zinc-700/80">
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+            <CardHeader className="pb-4 border-b border-zinc-800/50 flex flex-row items-center justify-between relative z-10">
                 <div>
                     <CardTitle className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
                         <Terminal className="w-4 h-4 text-emerald-400" /> Tracking Snippet
@@ -138,5 +146,6 @@ export function TrackingSnippetCard({ portalUrl }: { portalUrl: string }) {
                 </div>
             </CardContent>
         </Card>
+        </motion.div>
     );
 }

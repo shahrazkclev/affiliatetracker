@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Server, Loader2, CircleCheck, CircleX } from "lucide-react";
 import { saveSmtpSettings } from "./smtp-settings-actions";
+import { motion } from "framer-motion";
 
 export function SmtpSettingsCard({ currentConfig }: { currentConfig: any }) {
     const [host, setHost] = useState(currentConfig?.smtp_host || '');
@@ -28,9 +29,16 @@ export function SmtpSettingsCard({ currentConfig }: { currentConfig: any }) {
     }
 
     return (
-        <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden">
+        <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            className="w-full"
+        >
+        <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group transition-all duration-300 hover:shadow-2xl hover:border-zinc-700/80">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
-            <CardHeader className="pb-4 border-b border-zinc-800/50">
+            <CardHeader className="pb-4 border-b border-zinc-800/50 relative z-10">
                 <CardTitle className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
                     <Server className="w-4 h-4 text-cyan-400" /> Custom SMTP Configuration
                 </CardTitle>
@@ -109,19 +117,22 @@ export function SmtpSettingsCard({ currentConfig }: { currentConfig: any }) {
                         </div>
                     )}
 
-                    <Button
-                        type="submit"
-                        disabled={isPending}
-                        className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-semibold h-9 text-sm"
-                    >
-                        {isPending ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving Configuration...</>
-                        ) : (
-                            <><Server className="w-4 h-4 mr-2" /> Save SMTP Credentials</>
-                        )}
-                    </Button>
+                    <motion.div whileHover={{ scale: isPending ? 1 : 1.01 }} whileTap={{ scale: isPending ? 1 : 0.98 }}>
+                        <Button
+                            type="submit"
+                            disabled={isPending}
+                            className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold h-10 text-sm transition-colors shadow-[0_0_15px_rgba(34,211,238,0.15)] hover:shadow-[0_0_20px_rgba(34,211,238,0.3)]"
+                        >
+                            {isPending ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving Configuration...</>
+                            ) : (
+                                <><Server className="w-4 h-4 mr-2" /> Save SMTP Credentials</>
+                            )}
+                        </Button>
+                    </motion.div>
                 </form>
             </CardContent>
         </Card>
+        </motion.div>
     );
 }

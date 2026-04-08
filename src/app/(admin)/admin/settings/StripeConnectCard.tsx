@@ -12,6 +12,7 @@ import {
 import {
     saveStripeConnection, disconnectStripe, getStripeStatus,
 } from "./stripe-actions";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Status = {
     connected: boolean;
@@ -76,18 +77,32 @@ export function StripeConnectCard() {
 
     if (loading) {
         return (
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+            >
             <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl overflow-hidden">
                 <CardContent className="pt-6 flex items-center gap-3 text-zinc-500">
                     <Loader2 className="w-4 h-4 animate-spin" /> Checking Stripe connection...
                 </CardContent>
             </Card>
+            </motion.div>
         );
     }
 
     return (
-        <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group">
+        <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            className="w-full"
+        >
+        <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group transition-all duration-300 hover:shadow-2xl hover:border-zinc-700/80">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
-            <CardHeader className="pb-4 border-b border-zinc-800/50">
+            <CardHeader className="pb-4 border-b border-zinc-800/50 relative z-10">
                 <CardTitle className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-indigo-400" />
                     Stripe Integration
@@ -196,17 +211,19 @@ export function StripeConnectCard() {
                         </div>
                     )}
 
-                    <Button
-                        type="submit"
-                        disabled={isPending || !keyInput}
-                        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold h-9 text-sm"
-                    >
-                        {isPending ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Connecting...</>
-                        ) : (
-                            <><PlugZap className="w-4 h-4 mr-2" /> {status?.connected ? 'Update Connection' : 'Connect Stripe'}</>
-                        )}
-                    </Button>
+                    <motion.div whileHover={{ scale: isPending || !keyInput ? 1 : 1.01 }} whileTap={{ scale: isPending || !keyInput ? 1 : 0.98 }}>
+                        <Button
+                            type="submit"
+                            disabled={isPending || !keyInput}
+                            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold h-10 text-sm transition-colors shadow-[0_0_15px_rgba(79,70,229,0.15)] hover:shadow-[0_0_20px_rgba(79,70,229,0.3)]"
+                        >
+                            {isPending ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Connecting...</>
+                            ) : (
+                                <><PlugZap className="w-4 h-4 mr-2" /> {status?.connected ? 'Update Connection' : 'Connect Stripe'}</>
+                            )}
+                        </Button>
+                    </motion.div>
                 </form>
 
                 {/* What Happens Info */}
@@ -223,5 +240,6 @@ export function StripeConnectCard() {
                 </div>
             </CardContent>
         </Card>
+        </motion.div>
     );
 }
