@@ -72,12 +72,13 @@ export async function updateSession(request: NextRequest) {
     } else {
         // Standard behaviors for Dashboard or Custom Domains
         if (effectivePath === '/') {
-            if (isTenantDomain) effectivePath = '/portal';
-            if (isDashboard) effectivePath = '/admin';
-            if (isMarketingSite) {
-                 const url = request.nextUrl.clone();
-                 url.pathname = '/login';
-                 return NextResponse.redirect(url);
+            if (isTenantDomain) {
+                if (user) effectivePath = '/portal';
+                else effectivePath = '/apply';
+            }
+            if (isDashboard) {
+                if (user) effectivePath = '/admin';
+                else effectivePath = '/login';
             }
         }
     }

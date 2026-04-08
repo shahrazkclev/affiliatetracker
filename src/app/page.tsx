@@ -1,240 +1,372 @@
 'use client';
 
-import { useState, useTransition, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { sendSignupConfirmation, checkEmailConfirmed } from "./actions";
-import { loginWithPassword } from "@/app/login/actions";
-import { AlertCircle, Loader2, Mail, CheckCircle2, RefreshCw } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight, BarChart3, CloudLightning, ShieldCheck, Webhook } from 'lucide-react';
+import Link from 'next/link';
+import Footer from '../components/Footer';
 
-function friendlyAuthError(code: string | null, description: string | null): string | null {
-    if (!code && !description) return null;
-    if (code === 'otp_expired') return 'That confirmation link has expired. Please request a new one below.';
-    if (code === 'access_denied') return description?.replace(/\+/g, ' ') ?? 'Access was denied. Please try again.';
-    return description?.replace(/\+/g, ' ') ?? 'Something went wrong. Please try again.';
-}
+export default function Home() {
+  return (
+    <div className="flex flex-col min-h-screen bg-[#0a0a0a] text-[#f3f4f6]">
 
-function AffiliateRegistrationPageInner() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const [step, setStep] = useState<'email' | 'sent' | 'password'>('email');
-    const [email, setEmail] = useState('');
-    const [error, setError] = useState<string | null>(null);
-    const [isSending, startSending] = useTransition();
-    const [isChecking, startChecking] = useTransition();
 
-    // Handle all Supabase redirects that land on the home page
-    useEffect(() => {
-        const errorCode = searchParams.get('error_code');
-        const errorDesc = searchParams.get('error_description');
-        const code = searchParams.get('code');
+      {/* Hero Section */}
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-20 pb-32">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-4xl relative"
+        >
+          {/* Subtle Mango Branding Header motif */}
+          <motion.img 
+            src="/affiliatemango_logo.png" alt="AffiliateMango Motif"
+            animate={{ y: [0, -15, 0], rotate: [0, 10, -10, 0] }} 
+            transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }} 
+            className="absolute -top-24 -left-12 md:-left-32 w-64 h-64 scale-150 opacity-20 pointer-events-none drop-shadow-2xl z-0 object-contain"
+          />
 
-        // Clean up URL regardless
-        window.history.replaceState({}, '', '/');
+          <div className="inline-flex items-center justify-center space-x-2 bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1 rounded-full text-xs font-semibold mb-8 tracking-wide relative z-10">
+            <CloudLightning className="w-4 h-4" />
+            <span>v2.0 Affiliate Engine is Live</span>
+          </div>
 
-        // Show error message if Supabase returned one
-        const msg = friendlyAuthError(errorCode, errorDesc);
-        if (msg) { setError(msg); return; }
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8">
+            Add an affiliate engine to your website with <br/>
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-rose-400 to-purple-500 drop-shadow-sm">
+              Automated Affiliates.
+            </span>
+          </h1>
+          
+          <p className="text-lg md:text-xl text-zinc-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Create powerful affiliate programs in minutes. We handle the Stripe webhooks, commission logic, and payouts natively—no bloated middlemen, no 30% cuts.
+          </p>
 
-        // A ?code= on the home page is always a password reset —
-        // email confirmations and login magic links redirect to /auth/callback, not here.
-        if (code) {
-            const supabase = createClient();
-            supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-                if (error) {
-                    setError('This link is invalid or has expired. Please try again.');
-                } else {
-                    router.replace('/reset-password');
-                }
-            });
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-2">
+            <Link href="/pricing" className="relative group w-full sm:w-auto">
+              <div className="absolute -inset-1 bg-gradient-to-r from-orange-400 to-rose-500 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-500 group-hover:duration-200"></div>
+              <div className="relative w-full sm:w-auto px-8 py-4 bg-orange-500 hover:bg-orange-400 text-white rounded-full font-bold text-lg shadow-[inset_0px_2px_4px_rgba(255,255,255,0.2),0_0_30px_-5px_rgba(249,115,22,0.4)] transition-all flex items-center justify-center gap-2">
+                Start Free Trial <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+            <Link href="/docs/api" className="w-full sm:w-auto px-8 py-4 bg-zinc-900/80 backdrop-blur-md border border-zinc-700/50 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-full font-bold text-lg shadow-[inset_0px_2px_4px_rgba(255,255,255,0.05)] transition-all text-center">
+              View Documentation
+            </Link>
+          </div>
+        </motion.div>
 
-    async function handleSend(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault();
-        setError(null);
-        const fd = new FormData(e.currentTarget);
-        const typedEmail = (fd.get('email') as string).trim().toLowerCase();
-        startSending(async () => {
-            const result = await sendSignupConfirmation(fd);
-            if (result?.error) { setError(result.error); return; }
-            if (result?.existingUser) {
-                setEmail(typedEmail);
-                setStep('password');
-                return;
-            }
-            setEmail(typedEmail);
-            setStep('sent');
-        });
-    }
+        {/* Feature Grid Extract */}
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-32 max-w-6xl w-full text-left"
+        >
+          <div className="bg-zinc-900/40 backdrop-blur-xl border border-white/5 hover:border-white/10 p-8 rounded-3xl relative overflow-hidden group shadow-2xl transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-orange-500/20 blur-[40px] group-hover:bg-orange-500/30 transition-colors" />
+            <Webhook className="w-10 h-10 text-orange-400 mb-6 relative z-10" />
+            <h3 className="text-xl font-bold mb-3 relative z-10 text-zinc-100">Native Webhook Sync</h3>
+            <p className="text-zinc-400 line-clamp-3 relative z-10 leading-relaxed">Connects directly into your Stripe and your servers. Instant commissions on every matched checkout session without manual polling.</p>
+          </div>
+          
+          <div className="bg-zinc-900/40 backdrop-blur-xl border border-white/5 hover:border-white/10 p-8 rounded-3xl relative overflow-hidden group shadow-2xl transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-500/20 blur-[40px] group-hover:bg-rose-500/30 transition-colors" />
+            <BarChart3 className="w-10 h-10 text-rose-400 mb-6 relative z-10" />
+            <h3 className="text-xl font-bold mb-3 relative z-10 text-zinc-100">Live Attribution</h3>
+            <p className="text-zinc-400 line-clamp-3 relative z-10 leading-relaxed">Sub-millisecond tracking pixels and secure API logging ensures every click and purchase is attributed perfectly to your partners.</p>
+          </div>
 
-    async function handleConfirmCheck() {
-        setError(null);
-        startChecking(async () => {
-            const result = await checkEmailConfirmed(email);
-            if (result.confirmed) {
-                router.push('/apply/details');
-            } else {
-                setError('Your email has not been confirmed yet. Please click the link in your inbox first.');
-            }
-        });
-    }
+          <div className="bg-zinc-900/40 backdrop-blur-xl border border-white/5 hover:border-white/10 p-8 rounded-3xl relative overflow-hidden group shadow-2xl transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/20 blur-[40px] group-hover:bg-purple-500/30 transition-colors" />
+            <ShieldCheck className="w-10 h-10 text-purple-400 mb-6 relative z-10" />
+            <h3 className="text-xl font-bold mb-3 relative z-10 text-zinc-100">Fraud Prevention</h3>
+            <p className="text-zinc-400 line-clamp-3 relative z-10 leading-relaxed">Duplicate checkout protection, intelligent anomaly detection, and automated payouts powered natively by row-level secure logic.</p>
+          </div>
+        </motion.div>
+      </main>
 
-    async function handlePasswordLogin(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault();
-        setError(null);
-        const fd = new FormData(e.currentTarget);
-        fd.set('email', email);
-        startSending(async () => {
-            const result = await loginWithPassword(fd);
-            if (result?.error) setError(result.error);
-        });
-    }
+      {/* Setup / How it works Section */}
+      <section className="border-t border-zinc-900 bg-black py-24 px-4 w-full">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-16">
+          <div className="flex-1">
+            <h2 className="text-3xl md:text-5xl font-bold mb-6">Integrate your app in 5 minutes.</h2>
+            <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+              No complicated backend logic required. Generate a snippet from your dashboard and drop it globally on your client side. We trace unique sessions dynamically and associate payouts to Stripe Checkouts securely.
+            </p>
+            <ul className="space-y-4 mb-8">
+              <li className="flex items-center gap-3">
+                <div className="bg-orange-500/10 text-orange-400 p-2 rounded-full"><Webhook className="w-5 h-5" /></div>
+                <span className="text-zinc-300 font-medium">Automatic URL Detection</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <div className="bg-rose-500/10 text-rose-400 p-2 rounded-full"><BarChart3 className="w-5 h-5" /></div>
+                <span className="text-zinc-300 font-medium">90 Day Deep Cookie Storage</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <div className="bg-purple-500/10 text-purple-400 p-2 rounded-full"><ShieldCheck className="w-5 h-5" /></div>
+                <span className="text-zinc-300 font-medium">Spam Protection Native</span>
+              </li>
+            </ul>
+            <Link href="/docs/api" className="text-orange-400 font-bold hover:underline inline-flex items-center gap-2">
+              Read Developer Docs <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+          
+          <div className="flex-1 w-full relative group perspective-1000">
+            <div className="absolute -inset-4 bg-gradient-to-tr from-orange-500/20 via-rose-500/10 to-purple-500/20 blur-[80px] -z-10 rounded-full transition-all duration-700 opacity-60 group-hover:opacity-100" />
+            <div className="bg-zinc-950/80 backdrop-blur-2xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform transition-all duration-700 group-hover:-translate-y-2 group-hover:shadow-[0_40px_70px_rgba(0,0,0,0.6)]">
+              <div className="h-12 border-b border-white/5 flex items-center px-4 gap-2 bg-gradient-to-r from-zinc-900/50 to-zinc-900/20">
+                <div className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 cursor-pointer transition-colors shadow"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-500/80 hover:bg-yellow-500 cursor-pointer transition-colors shadow"></div>
+                <div className="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-500 cursor-pointer transition-colors shadow"></div>
+                <div className="ml-4 text-xs font-mono text-zinc-500 select-none">app/layout.tsx</div>
+              </div>
+              <pre className="p-6 text-sm font-mono text-zinc-300 overflow-x-auto selection:bg-orange-500/30 font-medium">
+{`<!-- Place this in the <head> of your site -->
+<script
+  src="https://partners.cleverpoly.store/mango.js"
+  data-org-id="org_123abc"
+  data-cookie-duration="90"
+  async
+></script>
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0e0e10] p-4">
-            <Card className="w-full max-w-md bg-zinc-900 border-zinc-800 shadow-2xl">
-                <CardHeader className="text-center space-y-3 pb-4">
-                    <div className="w-12 h-12 bg-orange-500 rounded-xl mx-auto flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-orange-500/30">
-                        C
-                    </div>
-                    <div>
-                        <CardTitle className="text-2xl font-bold text-zinc-100">Join the Affiliate Program</CardTitle>
-                        <CardDescription className="text-zinc-400 mt-1">
-                            {step === 'sent' && 'A confirmation link has been sent to your email'}
-                            {step === 'password' && <span className="text-orange-400">Account found. Welcome back!</span>}
-                            {step === 'email' && 'Enter your email address to get started'}
-                        </CardDescription>
-                    </div>
-                </CardHeader>
-
-                <CardContent>
-                    {error && (
-                        <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 text-red-400 px-3 py-2.5 rounded-lg text-sm mb-4">
-                            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                            <span>{error}</span>
-                        </div>
-                    )}
-
-                    {step === 'email' && (
-                        <form onSubmit={handleSend} className="space-y-4">
-                            <input type="hidden" name="org_id" value={searchParams.get('org_id') || ''} />
-                            <div className="space-y-2">
-                                <Label htmlFor="email" className="text-zinc-300 text-sm">Email Address</Label>
-                                <Input id="email" name="email" type="email" placeholder="you@example.com"
-                                    required autoFocus
-                                    className="bg-zinc-950 border-zinc-700 text-zinc-100 placeholder:text-zinc-600 focus-visible:ring-orange-500/50" />
-                            </div>
-                            <Button type="submit" disabled={isSending}
-                                className="w-full bg-orange-600 hover:bg-orange-500 text-white h-11 font-semibold disabled:opacity-60">
-                                {isSending
-                                    ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Sending…</>
-                                    : 'Send Confirmation Link'}
-                            </Button>
-                        </form>
-                    )}
-
-                    {step === 'password' && (
-                        <form onSubmit={handlePasswordLogin} className="space-y-4">
-                            <div className="flex items-center gap-2 bg-zinc-800/60 border border-zinc-700 px-3 py-2 rounded-lg text-sm text-zinc-400 mb-4">
-                                <span className="truncate flex-1">{email}</span>
-                                <button type="button" onClick={() => { setStep('email'); setError(null); }}
-                                    className="text-[11px] text-orange-400 hover:underline shrink-0">Change</button>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="password" className="text-zinc-300 text-sm">Welcome back! Please enter your password</Label>
-                                <Input id="password" name="password" type="password" required autoFocus
-                                    className="bg-zinc-950 border-zinc-700 text-zinc-100 placeholder:text-zinc-600 focus-visible:ring-orange-500/50" />
-                            </div>
-                            <Button type="submit" disabled={isSending}
-                                className="w-full bg-orange-600 hover:bg-orange-500 text-white h-11 font-semibold disabled:opacity-60">
-                                {isSending
-                                    ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Signing In…</>
-                                    : 'Sign In'}
-                            </Button>
-                            <a href="/login" className="block text-center text-xs text-zinc-500 hover:text-zinc-300 transition-colors py-2">
-                                Forgot password?
-                            </a>
-                        </form>
-                    )}
-
-                    {step === 'sent' && (
-                        <div className="space-y-5">
-                            {/* Email sent info */}
-                            <div className="flex items-start gap-3 bg-zinc-800/50 border border-zinc-700/60 rounded-xl p-4">
-                                <div className="w-9 h-9 bg-orange-500/10 border border-orange-500/20 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
-                                    <Mail className="w-4.5 h-4.5 text-orange-400" />
-                                </div>
-                                <div>
-                                    <p className="text-zinc-200 text-sm font-medium">Check your inbox</p>
-                                    <p className="text-zinc-500 text-xs mt-0.5">
-                                        We sent a confirmation link to <span className="text-orange-400">{email}</span>.
-                                        Open it to verify your address, then return here to continue.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Steps */}
-                            <ol className="space-y-2 text-sm">
-                                {[
-                                    'Open the email from AffiliateMango',
-                                    'Click the confirmation link',
-                                    'Return here and click Continue',
-                                ].map((step, i) => (
-                                    <li key={i} className="flex items-center gap-3 text-zinc-400">
-                                        <span className="w-5 h-5 bg-zinc-800 border border-zinc-700 rounded-full flex items-center justify-center text-[11px] text-zinc-500 shrink-0">
-                                            {i + 1}
-                                        </span>
-                                        {step}
-                                    </li>
-                                ))}
-                            </ol>
-
-                            {/* Continue button */}
-                            <Button onClick={handleConfirmCheck} disabled={isChecking}
-                                className="w-full bg-orange-600 hover:bg-orange-500 text-white h-11 font-semibold disabled:opacity-60">
-                                {isChecking
-                                    ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Checking…</>
-                                    : <><CheckCircle2 className="w-4 h-4 mr-2" />I've Confirmed My Email — Continue</>}
-                            </Button>
-
-                            {/* Resend */}
-                            <form onSubmit={handleSend}>
-                                <input type="hidden" name="email" value={email} />
-                                <input type="hidden" name="org_id" value={searchParams.get('org_id') || ''} />
-                                <button type="submit" disabled={isSending}
-                                    className="w-full flex items-center justify-center gap-1.5 text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-1">
-                                    <RefreshCw className="w-3 h-3" />
-                                    {isSending ? 'Resending…' : 'Resend confirmation link'}
-                                </button>
-                            </form>
-
-                            <button type="button" onClick={() => { setStep('email'); setError(null); }}
-                                className="w-full text-xs text-zinc-700 hover:text-zinc-500 transition-colors">
-                                ← Use a different email address
-                            </button>
-                        </div>
-                    )}
-
-                    <div className="mt-6 text-center text-sm">
-                        <span className="text-zinc-500">Already have an account? </span>
-                        <a href="/login" className="text-orange-400 font-medium hover:underline">Sign in</a>
-                    </div>
-                </CardContent>
-            </Card>
+<!-- Log a conversion with Stripe later! -->
+<script>
+  window.Mango?.logPurchase({
+    amount: 149.00,
+    stripeEventId: "evt_..." 
+  });
+</script>`}
+              </pre>
+            </div>
+          </div>
         </div>
-    );
-}
+      </section>
 
-export default function AffiliateRegistrationPage() {
-    return (
-        <Suspense>
-            <AffiliateRegistrationPageInner />
-        </Suspense>
-    );
+      {/* Dashboard App Detail Section */}
+      <section className="py-32 px-4 w-full bg-[#0a0a0a] relative overflow-hidden border-t border-zinc-900">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-orange-500/10 blur-[120px] rounded-full pointer-events-none" />
+        
+        <div className="max-w-7xl mx-auto flex flex-col items-center text-center mb-24 relative z-10">
+          <h2 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight relative">
+            <img src="/affiliatemango_logo.png" alt="AffiliateMango Motif" className="absolute -left-24 -top-24 w-48 h-48 scale-150 opacity-30 transform -rotate-12 pointer-events-none drop-shadow-2xl object-contain" />
+            Everything you need,<br/>beautifully designed.
+          </h2>
+          <p className="text-xl text-zinc-400 max-w-2xl px-4">Give your affiliates a world-class experience while retaining absolute control over approvals, percentages, and payouts.</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 max-w-7xl mx-auto relative z-10 items-center">
+          
+          {/* Feature Block 1: Affiliate Portal */}
+          <div className="flex flex-col justify-center order-2 lg:order-1">
+            <h3 className="text-3xl font-bold mb-4 text-white">White-labeled Partner Portals</h3>
+            <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+              When affiliates join, they get instant access to a gorgeous, lightning-fast dashboard where they can copy their unique `?ref=` links, view their real-time conversion graphs, and track incoming payouts securely.
+            </p>
+            <ul className="space-y-4">
+              <li className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-xs font-bold shrink-0">✓</div>
+                <span className="text-zinc-300">Custom referral link generation natively included.</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-xs font-bold shrink-0">✓</div>
+                <span className="text-zinc-300">Live analytics graphing clicks and pipeline conversions.</span>
+              </li>
+            </ul>
+          </div>
+          <div className="bg-gradient-to-br from-zinc-900/40 to-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-3 shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all hover:border-white/20 relative order-1 lg:order-2 group">
+            <div className="absolute inset-0 bg-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
+            <div className="bg-[#0f0f0f]/90 w-full h-[400px] rounded-2xl border border-zinc-800/80 shadow-[inset_0_2px_20px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col">
+              {/* Mock Dashboard UI */}
+              <div className="h-14 border-b border-white/5 flex items-center px-6 justify-between bg-[#111]/80 backdrop-blur-md">
+                <div className="font-extrabold text-sm tracking-tight flex items-center gap-2">
+                  <div className="w-5 h-5 bg-orange-500 rounded-md shadow-[0_0_10px_rgba(249,115,22,0.5)]"></div>
+                  Affiliate<span className="text-orange-500">Mango</span>
+                </div>
+                <div className="flex gap-2"><div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 shadow-sm animate-pulse"></div></div>
+              </div>
+              <div className="p-6 flex-1 flex flex-col gap-4 bg-[#0a0a0a]">
+                <div className="flex gap-3">
+                  <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                     <div className="text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-1">Clicks</div>
+                     <div className="text-2xl font-bold">1,204</div>
+                  </div>
+                  <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                     <div className="text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-1">Sales</div>
+                     <div className="text-2xl font-bold">89</div>
+                  </div>
+                  <div className="flex-1 bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 shadow-[0_0_20px_-10px_rgba(249,115,22,0.3)]">
+                     <div className="text-orange-500/80 text-[10px] uppercase font-bold tracking-widest mb-1">Earnings</div>
+                     <div className="text-2xl text-orange-400 font-bold">$4,450</div>
+                  </div>
+                </div>
+                <div className="flex-1 bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-4 relative overflow-hidden flex flex-col">
+                   <div className="text-sm font-medium mb-4">Traffic Performance</div>
+                   {/* Mock graph */}
+                   <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-orange-500/10 to-transparent flex items-end px-4 gap-2 pb-4">
+                     {[40, 60, 45, 80, 50, 90, 70, 85].map((h, i) => (
+                       <div key={i} className="flex-1 bg-orange-500/40 rounded-t-sm transition-all hover:bg-orange-500/60" style={{ height: `${h}%` }}></div>
+                     ))}
+                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature Block 2: Admin Dashboard */}
+          <div className="bg-gradient-to-br from-zinc-900/40 to-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-3 shadow-[0_0_50px_rgba(0,0,0,0.5)] transition-all hover:border-white/20 relative order-3 group">
+            <div className="absolute inset-0 bg-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
+            <div className="bg-[#0f0f0f]/90 w-full h-[400px] rounded-2xl border border-zinc-800/80 shadow-[inset_0_2px_20px_rgba(0,0,0,1)] relative overflow-hidden flex">
+              {/* Mock Admin UI */}
+              <div className="w-16 border-r border-white/5 bg-[#111]/80 backdrop-blur-md flex flex-col items-center py-6 gap-6 shadow-xl z-10">
+                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-rose-500 shadow-[0_0_15px_rgba(249,115,22,0.6)] flex items-center justify-center"><Webhook className="w-5 h-5 text-white" /></div>
+                 <div className="w-6 h-6 rounded-md bg-zinc-800 hover:bg-zinc-700 cursor-pointer transition-colors"></div>
+                 <div className="w-6 h-6 rounded-md bg-zinc-800 hover:bg-zinc-700 cursor-pointer transition-colors"></div>
+                 <div className="w-6 h-6 rounded-md bg-zinc-800 hover:bg-zinc-700 cursor-pointer transition-colors"></div>
+              </div>
+              <div className="flex-1 p-6 bg-[#0a0a0a] flex flex-col gap-4">
+                <div className="text-lg font-bold mb-2 flex items-center justify-between">
+                  Pending Payouts
+                  <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded font-bold uppercase">Ready</span>
+                </div>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex justify-between items-center group hover:border-orange-500/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-zinc-700 to-zinc-800 rounded-full flex items-center justify-center font-bold text-xs">P{i}</div>
+                      <div>
+                        <div className="text-sm font-bold">Partner {i}</div>
+                        <div className="text-xs text-zinc-500">connect_acc...</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right hidden sm:block">
+                        <div className="text-sm font-bold text-emerald-400">+${i * 150}.00</div>
+                        <div className="text-[10px] text-zinc-600 uppercase font-bold">Stripe Connect</div>
+                      </div>
+                      <div className="h-8 px-3 bg-zinc-800 group-hover:bg-orange-500 text-white rounded text-xs font-bold flex items-center justify-center transition-colors">Approve</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col justify-center order-4">
+            <h3 className="text-3xl font-bold mb-4 text-white">Automated Admin Control</h3>
+            <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+              No more manual spreadsheets or disjointed PayPal sending. Our Admin Panel lets you view all pending commissions natively. Review automatically flagged fraud transactions, click 'Approve', and let the Stripe Connect integration handle direct deposit securely in bulk.
+            </p>
+            <ul className="space-y-4">
+              <li className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs font-bold shrink-0">✓</div>
+                <span className="text-zinc-300">1-click bulk payouts mapped directly via Stripe.</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs font-bold shrink-0">✓</div>
+                <span className="text-zinc-300">Unified tracking for every affiliate's lifecycle.</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Feature Block 3: Notifications */}
+          <div className="flex flex-col justify-center order-6 lg:order-5">
+            <h3 className="text-3xl font-bold mb-4 text-white">Instant Event Notifications</h3>
+            <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+              Keep your affiliates engaged and motivated with automated transactional emails. From welcome sequences to real-time commission alerts, our built-in notification engine handles delivery seamlessly.
+            </p>
+            <ul className="space-y-4">
+              <li className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-xs font-bold shrink-0">✓</div>
+                <span className="text-zinc-300">"New Commission" alerts for partners.</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-xs font-bold shrink-0">✓</div>
+                <span className="text-zinc-300">"Payout Sent" verification receipts.</span>
+              </li>
+            </ul>
+          </div>
+          <div className="bg-gradient-to-br from-zinc-900 to-black border border-zinc-800 rounded-3xl p-2 shadow-2xl relative order-5 lg:order-6">
+            <div className="absolute inset-0 bg-gradient-to-bl from-purple-500/10 to-transparent blur-xl rounded-3xl" />
+            <div className="bg-[#0f0f0f] w-full h-[400px] rounded-2xl border border-zinc-800 shadow-inner relative overflow-hidden flex flex-col items-center justify-center">
+              {/* Mock Email Notifications UI */}
+              <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-purple-500/5 to-transparent flex items-start justify-center pt-8">
+                <div className="w-24 h-1 bg-purple-500/20 rounded-full blur-sm"></div>
+              </div>
+              
+              <div className="relative z-10 w-full px-8 space-y-4">
+                {/* Notification 1 */}
+                <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-xl p-4 shadow-xl transform transition-transform hover:-translate-y-1 cursor-default">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                      <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">New Conversion!</span>
+                    </div>
+                    <span className="text-[10px] text-zinc-500">Just now</span>
+                  </div>
+                  <p className="text-sm text-zinc-400">Someone just purchased the Pro plan using your link. You earned <strong className="text-emerald-400">$29.50</strong>!</p>
+                </div>
+                
+                {/* Notification 2 */}
+                <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-xl p-4 shadow-xl transform transition-transform hover:-translate-y-1 cursor-default">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Payout Sent</span>
+                    </div>
+                    <span className="text-[10px] text-zinc-500">2h ago</span>
+                  </div>
+                  <p className="text-sm text-zinc-400">Good news! We've processed your pending commissions. <strong className="text-white">$450.00</strong> is on its way to your account.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-24 px-4 max-w-4xl mx-auto w-full">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-5xl font-bold mb-4 flex items-center justify-center">Frequently Asked Questions <motion.img src="/affiliatemango_logo.png" alt="FAQ Motif" animate={{ y: [0, -10, 0], rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }} className="inline-block w-24 h-24 object-contain scale-[1.5] -my-6 -mr-8 -ml-2" /></h2>
+          <p className="text-zinc-400 text-lg">Everything you need to know about scaling via Referral Programs.</p>
+        </div>
+        <div className="space-y-6">
+          <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl">
+            <h3 className="text-xl font-bold mb-3">Does it work with customized checkouts?</h3>
+            <p className="text-zinc-400">Absolutely. As long as you generate Webhooks on successful checkout, we attribute the sale automatically—even if they buy months later on a different domain.</p>
+          </div>
+          <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl">
+            <h3 className="text-xl font-bold mb-3">How are affiliates paid out?</h3>
+            <p className="text-zinc-400">Commissions calculate instantly in the system. When it's time for payout, we securely integrate with Stripe Connect allowing bulk transfers, ensuring no middle-man fees except standard routing costs.</p>
+          </div>
+          <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl">
+            <h3 className="text-xl font-bold mb-3">Do I need extensive development experience?</h3>
+            <p className="text-zinc-400">If you can paste a Javascript tag inside a website builder (like Framer, Webflow, or Shopify), you're ready to go. The automated backend handles everything securely.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-32 px-4 max-w-6xl mx-auto w-full">
+        <div className="relative rounded-[3rem] overflow-hidden bg-zinc-900/40 backdrop-blur-3xl border border-white/10 p-12 md:p-24 text-center flex flex-col items-center shadow-[0_0_80px_rgba(249,115,22,0.15)] group">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-transparent to-purple-500/20 opacity-50 group-hover:opacity-100 transition-opacity duration-1000" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.3)_0%,transparent_50%)]" />
+          
+          <h2 className="text-5xl md:text-7xl font-extrabold mb-6 relative z-10 tracking-tight text-white drop-shadow-sm">Ready to boost your revenue?</h2>
+          <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto relative z-10 leading-relaxed">Join top businesses leveraging massive commission networks securely and autonomously. No 30% revenue sharing, just flat predictable pricing.</p>
+          
+          <div className="relative z-10 mt-4">
+            <div className="absolute -inset-2 bg-gradient-to-r from-orange-500 to-rose-500 rounded-full blur-xl opacity-50 group-hover:opacity-80 transition duration-500"></div>
+            <a href="http://localhost:3000/register" className="relative flex items-center gap-3 px-10 py-5 bg-white text-black hover:bg-zinc-200 rounded-full font-bold text-xl shadow-2xl transition-all hover:scale-105 active:scale-95">
+              Build Your Program Now <ArrowRight className="w-6 h-6" />
+            </a>
+          </div>
+        </div>
+      </section>
+      
+      <Footer />
+    </div>
+  );
 }

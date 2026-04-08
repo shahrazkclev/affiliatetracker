@@ -24,6 +24,8 @@ export default function LoginPage() {
         }
     }, []);
 
+    const applyLink = isDashboard ? "/apply" : "https://partners.affiliatemango.com/apply";
+
     async function handleEmailCheck(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setError(null);
