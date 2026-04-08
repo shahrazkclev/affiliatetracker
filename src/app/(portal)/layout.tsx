@@ -1,4 +1,5 @@
 import { PortalSidebar } from "@/components/PortalSidebar";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { createClient } from "@/utils/supabase/server";
 
@@ -51,11 +52,13 @@ export default async function PortalLayout({
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-zinc-950/80 pointer-events-none z-0" />
                 )}
 
-                <PortalSidebar />
+                <MobileSidebarWrapper>
+                    <PortalSidebar />
+                </MobileSidebarWrapper>
 
                 <main className="flex-1 flex flex-col min-h-screen overflow-hidden relative z-10 w-full max-w-[100vw]">
                     <header
-                        className={`h-16 border-b flex items-center px-6 justify-between backdrop-blur-md z-10 shadow-sm shrink-0 ${
+                        className={`h-16 border-b flex items-center pl-16 md:pl-6 pr-6 justify-between backdrop-blur-md z-10 shadow-sm shrink-0 ${
                             isLight
                                 ? "border-zinc-200 bg-white/90"
                                 : "border-zinc-800/80 bg-zinc-950/80"
