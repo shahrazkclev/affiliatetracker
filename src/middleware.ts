@@ -64,10 +64,12 @@ export async function middleware(request: NextRequest) {
     }
 
     // ── Route Isolation Layer by Hostname ──────────────────────
-    const hostname = request.headers.get("x-mango-tenant-host") || request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+    const rawHostname = request.headers.get("x-mango-tenant-host") || request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+    const hostname = rawHostname.split(':')[0].toLowerCase();
+    
     const pathname = request.nextUrl.pathname;
     const isLocalhost = hostname.includes("localhost") || hostname.includes("127.0.0.1");
-    const isDashboard = hostname.startsWith("dashboard.affiliatemango.com") || hostname.startsWith("admin.affiliatemango.com");
+    const isDashboard = hostname === "dashboard.affiliatemango.com" || hostname === "admin.affiliatemango.com";
     const isGenericPartners = hostname === "partners.affiliatemango.com";
     const isMarketingSite = hostname === "affiliatemango.com" || hostname === "www.affiliatemango.com";
     

@@ -31,8 +31,10 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    const hostname = request.headers.get("x-mango-tenant-host") || request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
-    const isDashboard = hostname.startsWith("dashboard.affiliatemango.com") || hostname.startsWith("admin.affiliatemango.com");
+    const rawHostname = request.headers.get("x-mango-tenant-host") || request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+    const hostname = rawHostname.split(':')[0].toLowerCase();
+    
+    const isDashboard = hostname === "dashboard.affiliatemango.com" || hostname === "admin.affiliatemango.com";
     const isLocalhost = hostname.includes("localhost") || hostname.includes("127.0.0.1");
     const isGenericPartners = hostname === "partners.affiliatemango.com";
     const isMarketingSite = hostname === "affiliatemango.com" || hostname === "www.affiliatemango.com";
