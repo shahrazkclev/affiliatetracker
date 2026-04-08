@@ -6,6 +6,8 @@ const stripe = new Stripe(process.env.SAAS_STRIPE_SECRET_KEY!, {
     apiVersion: '2023-10-16' as any,
 });
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
     const payload = await req.text();
     const signature = req.headers.get('stripe-signature');
@@ -27,9 +29,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
     }
 
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceRoleKey) {
+        console.error("SUPABASE_SERVICE_ROLE_KEY is not defined in this environment!");
+        return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
+    }
+
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
+        serviceRoleKey
     );
 
     try {
