@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Globe, Loader2, CircleCheck, CircleX, ChevronRight } from "lucide-react";
 import { saveCustomDomain } from "./cloudflare-actions";
@@ -12,6 +13,7 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
     const [domain, setDomain] = useState(currentDomain || '');
     const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
     const [isPending, startTransition] = useTransition();
+    const [hasConfiguredDns, setHasConfiguredDns] = useState(false);
 
     async function handleSave(e: React.FormEvent) {
         e.preventDefault();
@@ -63,6 +65,23 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
                              <ChevronRight className="w-3 h-3 text-zinc-600" />
                              <span className="text-xs text-purple-400 font-mono select-all">portal.affiliatemango.com</span>
                          </div>
+                         <p className="text-[10px] text-zinc-500 mt-2 leading-tight">
+                            <strong className="text-zinc-400">Note:</strong> Global DNS propagation typically begins within a few minutes, but can take up to 24 hours depending on your registrar. If validation fails, please wait 5-10 minutes and try clicking Connect again.
+                         </p>
+                    </div>
+
+                    <div className="flex items-start space-x-3 bg-black/20 p-3 rounded-md border border-zinc-800/80">
+                        <Checkbox 
+                            id="dns-confirm" 
+                            className="mt-0.5 border-zinc-600 data-[state=checked]:bg-purple-600 data-[state=checked]:text-white"
+                            checked={hasConfiguredDns}
+                            onCheckedChange={(checked) => setHasConfiguredDns(checked === true)}
+                        />
+                        <div className="grid leading-none">
+                            <label htmlFor="dns-confirm" className="text-xs font-medium text-zinc-300 leading-tight cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                I confirm I have successfully added the CNAME record in my provider.
+                            </label>
+                        </div>
                     </div>
 
                     {msg && (
@@ -78,8 +97,8 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
 
                     <Button
                         type="submit"
-                        disabled={isPending}
-                        className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold h-9 text-sm"
+                        disabled={isPending || !hasConfiguredDns || !domain}
+                        className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold h-9 text-sm focus-visible:ring-purple-500 focus-visible:ring-opacity-50 disabled:opacity-50"
                     >
                         {isPending ? (
                             <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Binding Hostname...</>
