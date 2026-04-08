@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,14 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
+    const [isDashboard, setIsDashboard] = useState(false);
+
+    useEffect(() => {
+        const hostname = window.location.hostname;
+        if (hostname.startsWith('dashboard.') || hostname.startsWith('admin.')) {
+            setIsDashboard(true);
+        }
+    }, []);
 
     async function handleEmailCheck(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -81,9 +89,11 @@ export default function LoginPage() {
         <div className="min-h-screen flex items-center justify-center bg-[#0e0e10] p-4">
             <Card className="w-full max-w-sm bg-zinc-900 border-zinc-800 shadow-2xl">
                 <CardHeader className="text-center space-y-3 pb-4">
-                    <div className="w-12 h-12 bg-orange-500 rounded-xl mx-auto flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-orange-500/30">
-                        C
-                    </div>
+                    <img 
+                        src="/affiliatemango_logo.png" 
+                        alt="AffiliateMango Logomark" 
+                        className="w-12 h-12 object-contain mx-auto"
+                    />
                     <div>
                         <CardTitle className="text-2xl font-bold text-zinc-100">Sign In</CardTitle>
                         <CardDescription className="text-zinc-400 mt-1">{subtitle[step]}</CardDescription>
@@ -148,7 +158,7 @@ export default function LoginPage() {
                                 <p className="text-orange-400 font-mono text-sm mt-1">{email}</p>
                             </div>
                             <p className="text-zinc-500 text-sm">
-                                Click the link in your email to set your password and access your portal.
+                                Click the link in your email to set your password and access your account.
                                 Check your spam folder if you don't see it.
                             </p>
                             <button type="button" onClick={() => { setStep('email'); setError(null); }}
@@ -177,10 +187,12 @@ export default function LoginPage() {
                         </div>
                     )}
 
-                    <div className="mt-6 text-center text-sm">
-                        <span className="text-zinc-500">Don't have an account? </span>
-                        <a href="/" className="text-orange-400 font-medium hover:underline">Apply as Affiliate</a>
-                    </div>
+                    {!isDashboard && (
+                        <div className="mt-6 text-center text-sm">
+                            <span className="text-zinc-500">Don't have an account? </span>
+                            <a href="/" className="text-orange-400 font-medium hover:underline">Apply as Affiliate</a>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

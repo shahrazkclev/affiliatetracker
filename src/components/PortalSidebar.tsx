@@ -46,9 +46,9 @@ export async function PortalSidebar() {
                         <Image
                             src="/affiliatemango_logo.png"
                             alt="AffiliateMango Logo"
-                            width={80}
-                            height={80}
-                            className="w-14 h-14 object-contain scale-[1.5] -my-6 -ml-3 -mr-2"
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 object-contain mr-1"
                         />
                         <div className="flex flex-col justify-center">
                             <h1 className="text-lg font-bold text-zinc-100 flex items-center gap-2 group cursor-pointer transition-all duration-300">

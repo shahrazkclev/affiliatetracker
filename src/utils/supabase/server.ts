@@ -27,3 +27,26 @@ export async function createClient() {
         }
     )
 }
+
+import { headers } from 'next/headers';
+
+export async function getResolvedOrgId(): Promise<string | null> {
+    const h = await headers();
+    const slug = h.get('x-org-slug');
+    const hostname = h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "";
+    
+    // For localhost dev, default to null if no explicit slug mapping to avoid hijacking the routing
+    const searchValue = slug || (hostname.includes('localhost') ? null : hostname);
+
+    if (!searchValue) return null;
+
+    const supabase = await createClient();
+    const { data } = await supabase
+        .from('organizations')
+        .select('id')
+        .ilike('custom_domain', searchValue)
+        .limit(1)
+        .maybeSingle();
+
+    return data?.id || null;
+}

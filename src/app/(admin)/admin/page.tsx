@@ -14,9 +14,9 @@ export default async function AdminDashboard() {
   const { data: org } = await supabase
     .from('organizations')
     .select('id, stripe_webhook_id, custom_domain')
-    .eq('owner_id', user?.id || '')
+    .eq('owner_id', user?.id || 'NO_USER')
     .limit(1)
-    .single();
+    .maybeSingle();
 
   const orgId = org?.id;
   const portalUrl = org?.custom_domain ? `https://${org.custom_domain}` : (process.env.NEXT_PUBLIC_SITE_URL || "https://affiliatemango.com");

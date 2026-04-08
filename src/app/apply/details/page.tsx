@@ -27,9 +27,11 @@ function ApplyDetailsPageInner() {
         <div className="min-h-screen flex items-center justify-center bg-[#0e0e10] p-4">
             <Card className="w-full max-w-md bg-zinc-900 border-zinc-800 shadow-2xl">
                 <CardHeader className="text-center space-y-3 pb-4">
-                    <div className="w-12 h-12 bg-orange-500 rounded-xl mx-auto flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-orange-500/30">
-                        C
-                    </div>
+                    <img 
+                        src="/affiliatemango_logo.png" 
+                        alt="AffiliateMango Logomark" 
+                        className="w-12 h-12 object-contain mx-auto"
+                    />
                     <div>
                         <CardTitle className="text-2xl font-bold text-zinc-100">Complete Your Application</CardTitle>
                         <CardDescription className="text-zinc-400 mt-1">

@@ -1,7 +1,8 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
 import { DollarSign, Clock, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pagination } from "@/components/Pagination";
+import { redirect } from "next/navigation";
 
 const PAGE_SIZE = 30;
 
@@ -11,10 +12,14 @@ export default async function AffiliateCommissionsPage({ searchParams }: { searc
 
     if (!user) return null;
 
+    const orgId = await getResolvedOrgId();
+    if (!orgId) redirect("/login");
+
     const { data: affiliate } = await supabase
         .from('affiliates')
         .select('id, org_id, total_commission, campaign:campaigns(show_customer_email)')
         .eq('user_id', user.id)
+        .eq('org_id', orgId)
         .single();
 
     if (!affiliate) return null;

@@ -23,7 +23,19 @@ export async function GET(request: Request) {
                 process.env.SUPABASE_SERVICE_ROLE_KEY!
             );
 
-            // Check if this user has an affiliate record
+            // First, check if this is a Platform Owner (Admin)
+            const { data: org } = await admin
+                .from('organizations')
+                .select('id')
+                .eq('owner_id', data.user.id)
+                .maybeSingle();
+
+            if (org) {
+                // Return platform owners directly to their dashboard!
+                return NextResponse.redirect(`${origin}/admin`);
+            }
+
+            // Otherwise, check if this user has an affiliate record
             const { data: affiliate } = await admin
                 .from('affiliates')
                 .select('id, status')

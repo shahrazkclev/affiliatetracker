@@ -52,11 +52,36 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
 
     // If no org exists, provision one!
     if (!orgId) {
+        // Generate a base slug from the company name
+        let baseSlug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!baseSlug) baseSlug = 'tenant';
+
+        // Ensure uniqueness for the slug by checking against existing custom_domains
+        let finalSlug = baseSlug;
+        let isUnique = false;
+        let counter = 0;
+
+        while (!isUnique) {
+            const { data: check } = await admin
+                .from('organizations')
+                .select('id')
+                .eq('custom_domain', finalSlug)
+                .maybeSingle();
+
+            if (!check) {
+                isUnique = true;
+            } else {
+                counter++;
+                finalSlug = `${baseSlug}${counter}`;
+            }
+        }
+
         const { data: newOrg, error: orgError } = await admin
             .from('organizations')
             .insert({
                 owner_id: userId,
-                name: companyName
+                name: companyName,
+                custom_domain: finalSlug // Store the slug here! Real domains will have dots (.) later.
             })
             .select('id')
             .single();
@@ -98,5 +123,11 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
     }
 
     revalidatePath('/', 'layout');
+
+    if (!authData.session) {
+        // Email confirmation is required, redirect them to a friendly state instead of forcefully bouncing to /login
+        redirect('/login?message=Check your email to verify your account.');
+    }
+
     redirect('/admin');
 }

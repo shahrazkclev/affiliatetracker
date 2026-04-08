@@ -1,9 +1,10 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wallet, ClockIcon, CheckCircle2, AlertCircle } from "lucide-react";
 import { PortalPayoutActions } from "./PortalPayoutActions";
 import { Pagination } from "@/components/Pagination";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 const PAGE_SIZE = 20;
 
@@ -13,10 +14,14 @@ export default async function AffiliatePayoutsPage({ searchParams }: { searchPar
     const currentPage = Math.max(1, parseInt(params.page || '1', 10));
     const { data: { user } } = await supabase.auth.getUser();
 
+    const orgId = await getResolvedOrgId();
+    if (!orgId) redirect("/login");
+
     const { data: affiliate } = await supabase
         .from('affiliates')
         .select('id, name, payout_email, payout_threshold, total_commission')
         .eq('email', user?.email ?? '')
+        .eq('org_id', orgId)
         .maybeSingle();
 
     // All payouts this affiliate has received
