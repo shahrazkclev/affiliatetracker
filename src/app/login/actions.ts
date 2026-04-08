@@ -42,6 +42,7 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         .from('affiliates')
         .select('id, user_id')
         .eq('email', email)
+        .limit(1)
         .maybeSingle();
 
     if (affErr) return { error: 'Could not verify your account. Please try again.' };

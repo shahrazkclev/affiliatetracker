@@ -39,18 +39,49 @@ export async function getResolvedOrgId(): Promise<string | null> {
     // strip the port
     const hostname = primaryHost.split(':')[0].toLowerCase();
     
-    // For localhost dev, default to null if no explicit slug mapping to avoid hijacking the routing
-    const searchValue = slug || (hostname.includes('localhost') || hostname.includes('127.0.0.1') ? null : hostname);
+    const isGenericPartners = hostname === 'partners.affiliatemango.com';
+    const isLocalhost = hostname.includes('localhost') || hostname.includes('127.0.0.1');
+    const isDashboard = hostname === 'dashboard.affiliatemango.com' || hostname === 'admin.affiliatemango.com';
 
-    if (!searchValue) return null;
+    const searchValue = slug || (isLocalhost || isDashboard ? null : hostname);
 
     const supabase = await createClient();
-    const { data } = await supabase
-        .from('organizations')
-        .select('id')
-        .ilike('custom_domain', searchValue)
-        .limit(1)
-        .maybeSingle();
 
-    return data?.id || null;
+    if (searchValue && !isGenericPartners) {
+        // Try exact match on custom_domain or app_url
+        const possibleSlug = searchValue.replace('.affiliatemango.com', '');
+        
+        const { data: orgByDomain } = await supabase
+            .from('organizations')
+            .select('id')
+            .or(`custom_domain.ilike.${searchValue},app_url.ilike.${searchValue},app_url.ilike.${possibleSlug}`)
+            .limit(1);
+
+        if (orgByDomain && orgByDomain.length > 0) return orgByDomain[0].id;
+        
+        // Fallback match on name
+        const { data: orgByName } = await supabase
+            .from('organizations')
+            .select('id')
+            .ilike('name', possibleSlug)
+            .limit(1);
+            
+        if (orgByName && orgByName.length > 0) return orgByName[0].id;
+    }
+
+    // Generic portals & Localhost without domain scoping
+    // Magically infer the org based on the authenticated affiliate
+    if (isGenericPartners || isLocalhost) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+            const { data: aff } = await supabase
+                .from('affiliates')
+                .select('org_id')
+                .eq('email', user.email)
+                .limit(1);
+            if (aff && aff.length > 0) return aff[0].org_id;
+        }
+    }
+
+    return null;
 }
