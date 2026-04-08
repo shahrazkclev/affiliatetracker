@@ -33,10 +33,14 @@ import { headers } from 'next/headers';
 export async function getResolvedOrgId(): Promise<string | null> {
     const h = await headers();
     const slug = h.get('x-org-slug');
-    const hostname = h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "";
+    const rawHost = h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "";
+    // x-forwarded-host could be a comma-separated list, take the first one
+    const primaryHost = rawHost.split(',')[0].trim();
+    // strip the port
+    const hostname = primaryHost.split(':')[0].toLowerCase();
     
     // For localhost dev, default to null if no explicit slug mapping to avoid hijacking the routing
-    const searchValue = slug || (hostname.includes('localhost') ? null : hostname);
+    const searchValue = slug || (hostname.includes('localhost') || hostname.includes('127.0.0.1') ? null : hostname);
 
     if (!searchValue) return null;
 

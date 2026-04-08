@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Globe, Loader2, CircleCheck, CircleX, ChevronRight, AlertCircle, Trash2 } from "lucide-react";
-import { saveCustomDomain, getCustomDomainStatus, removeCustomDomain } from "./cloudflare-actions";
+import { saveCustomDomain, getCustomDomainStatus, removeCustomDomain, switchSslToTxt } from "./cloudflare-actions";
 
 export function CustomDomainCard({ 
     currentDomain,
@@ -155,9 +155,35 @@ export function CustomDomainCard({
                         )}
                         
                         {!validationData?.txt_name && (domainStatus === 'pending_validation' || domainStatus === 'pending') && (
-                            <p className="mt-4 text-[11px] text-zinc-500 bg-zinc-900/50 p-3 rounded border border-zinc-800 leading-relaxed">
-                                <strong className="text-zinc-300">Awaiting DNS:</strong> We are observing your DNS provider (e.g. Squarespace, GoDaddy) as it broadcasts your CNAME record globally. Cloudflare is performing automated HTTP/Edge routing checks securely in the background. This typically takes 15–30 minutes to finalize SSL generation. No further action is required from you!
-                            </p>
+                            <>
+                                <p className="mt-4 text-[11px] text-zinc-500 bg-zinc-900/50 p-3 rounded border border-zinc-800 leading-relaxed">
+                                    <strong className="text-zinc-300">Awaiting DNS:</strong> We are observing your DNS provider (e.g. Squarespace, GoDaddy) as it broadcasts your CNAME record globally. Cloudflare is performing automated HTTP/Edge routing checks securely in the background. This typically takes 15–30 minutes to finalize SSL generation. No further action is required from you!
+                                </p>
+                                <div className="mt-3">
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={async () => {
+                                            setMsg(null);
+                                            setIsChecking(true);
+                                            const res = await switchSslToTxt(currentDomain);
+                                            if (res.success) {
+                                                setMsg({ ok: true, text: "Switched to TXT validation. Refreshing status..." });
+                                                const stat = await getCustomDomainStatus(currentDomain);
+                                                setDomainStatus(stat.status);
+                                                onStatusChange(stat.status);
+                                                if (stat.ssl?.validation_records) setValidationData(stat.ssl.validation_records[0]);
+                                            } else {
+                                                setMsg({ ok: false, text: res.error || "Failed to switch validation method" });
+                                            }
+                                            setIsChecking(false);
+                                        }}
+                                        className="w-full bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white shadow-sm"
+                                    >
+                                        Taking too long? Switch to manual TXT validation
+                                    </Button>
+                                </div>
+                            </>
                         )}
                         
                         {msg && (

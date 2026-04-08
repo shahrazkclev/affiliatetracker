@@ -42,7 +42,7 @@ export async function saveCustomDomain(domain: string) {
                 body: JSON.stringify({
                     hostname: cleanDomain,
                     ssl: {
-                        method: "txt",
+                        method: "http",
                         type: "dv"
                     }
                 })
@@ -142,6 +142,51 @@ export async function removeCustomDomain(domain: string) {
         
         revalidatePath('/admin/portal-config');
         return { success: true };
+    } catch (err: any) {
+        return { success: false, error: err.message || 'Server error' };
+    }
+}
+
+export async function switchSslToTxt(domain: string) {
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { success: false, error: 'Unauthorized' };
+
+        const CF_ZONE_ID = process.env.CLOUDFLARE_ZONE_ID;
+        const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+
+        if (!CF_ZONE_ID || !CF_API_TOKEN) return { success: false, error: "Missing CF config" };
+
+        const getRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/custom_hostnames?hostname=${domain}`, {
+            headers: { 'Authorization': `Bearer ${CF_API_TOKEN}`, 'Content-Type': 'application/json' }
+        });
+        const getData = await getRes.json();
+        
+        if (getData.success && getData.result?.length > 0) {
+            const hostnameId = getData.result[0].id;
+            
+            const patchRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/custom_hostnames/${hostnameId}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${CF_API_TOKEN}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ssl: {
+                        method: "txt",
+                        type: "dv"
+                    }
+                })
+            });
+            const patchData = await patchRes.json();
+            
+            if (!patchData.success) {
+                return { success: false, error: patchData.errors?.[0]?.message || 'Failed to switch to TXT.' };
+            }
+            
+            revalidatePath('/admin/portal-config');
+            return { success: true };
+        }
+        
+        return { success: false, error: "Hostname not found on CF." };
     } catch (err: any) {
         return { success: false, error: err.message || 'Server error' };
     }

@@ -1,29 +1,21 @@
 import { PortalSidebar } from "@/components/PortalSidebar";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { ProfileMenu } from "@/components/ProfileMenu";
-import { createClient } from "@/utils/supabase/server";
-import { headers } from "next/headers";
+import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
 
 async function getOrgBranding() {
     try {
-        const h = await headers();
-        const slug = h.get('x-org-slug'); // Provided by middleware for partners.affiliatemango.com/slug
-        const hostname = h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "";
-        
-        // As slug and custom_domain are stored in the same column 'custom_domain' natively
-        const searchValue = slug || (hostname.includes('localhost') ? null : hostname);
+        const orgId = await getResolvedOrgId();
+        if (!orgId) return null;
 
         const supabase = await createClient();
         
-        let query = supabase
+        const { data } = await supabase
             .from("organizations")
-            .select("primary_color, theme");
-
-        if (searchValue) {
-            query = query.ilike("custom_domain", searchValue);
-        }
-
-        const { data } = await query.limit(1).single();
+            .select("primary_color, theme")
+            .eq("id", orgId)
+            .limit(1)
+            .single();
         return data;
     } catch {
         return null;
