@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { createClient } from '@/utils/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 interface EmailOptions {
     to: string;
@@ -18,7 +18,10 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
     let brandColor = '#f97316'; // orange-500
 
     if (orgId) {
-        const supabase = await createClient();
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+        const supabase = createAdminClient(supabaseUrl, supabaseServiceKey);
+        
         const { data: org } = await supabase
             .from('organizations')
             .select('name, primary_color, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from_email')
