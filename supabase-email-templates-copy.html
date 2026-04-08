@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Supabase Email Templates</title>
+<style>
+    body { font-family: sans-serif; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 40px 20px; background: #0a0a0a; color: #f3f4f6;}
+    .template-box { background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 40px; margin-bottom: 80px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+    h2 { color: #60a5fa; margin-top: 0; padding-bottom: 20px; border-bottom: 2px dashed #4b5563; margin-bottom: 30px; font-size: 24px; }
+    pre { background: #000; padding: 20px; border-radius: 8px; overflow-x: auto; color: #a5b4fc; font-size: 14px; border: 1px solid #374151; }
+</style>
+</head>
+<body>
+
+<h1>Cleverpoly Auth Email Templates</h1>
+<p>Copy and paste the HTML code below into the corresponding sections under <strong>Authentication -> Email Templates</strong> in your Supabase Dashboard.</p>
+
+<div class="template-box">
+    <h2>1. Confirm Signup</h2>
+<pre>
+&lt;div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px;"&gt;
+    &lt;div style="text-align: center; margin-bottom: 20px;"&gt;
+        &lt;h1 style="color: #333333; margin: 0; font-size: 24px; font-weight: bold;"&gt;Cleverpoly Store&lt;/h1&gt;
+    &lt;/div&gt;
+    &lt;div style="background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"&gt;
+        &lt;h2 style="color: #333333; margin-top: 0; text-align: center;"&gt;Confirm your email address&lt;/h2&gt;
+        &lt;p style="color: #555555; text-align: center; margin-bottom: 30px;"&gt;Thank you for signing up as a Cleverpoly Partner. Please click the button below to verify your email address.&lt;/p&gt;
+        &lt;div style="text-align: center;"&gt;
+            &lt;a href="{{ .ConfirmationURL }}" style="background-color: #000000; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;"&gt;Confirm Email&lt;/a&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+</div>
+
+<div class="template-box">
+    <h2>2. Invite User</h2>
+<pre>
+&lt;div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px;"&gt;
+    &lt;div style="text-align: center; margin-bottom: 20px;"&gt;
+        &lt;h1 style="color: #333333; margin: 0; font-size: 24px; font-weight: bold;"&gt;Cleverpoly Store&lt;/h1&gt;
+    &lt;/div&gt;
+    &lt;div style="background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"&gt;
+        &lt;h2 style="color: #333333; margin-top: 0; text-align: center;"&gt;You have been invited!&lt;/h2&gt;
+        &lt;p style="color: #555555; text-align: center; margin-bottom: 30px;"&gt;You have been invited to join the Cleverpoly Partner Program. Click below to accept the invitation and set up your account.&lt;/p&gt;
+        &lt;div style="text-align: center;"&gt;
+            &lt;a href="{{ .ConfirmationURL }}" style="background-color: #000000; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;"&gt;Accept Invitation&lt;/a&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+</div>
+
+<div class="template-box">
+    <h2>3. Magic Link</h2>
+<pre>
+&lt;div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px;"&gt;
+    &lt;div style="text-align: center; margin-bottom: 20px;"&gt;
+        &lt;h1 style="color: #333333; margin: 0; font-size: 24px; font-weight: bold;"&gt;Cleverpoly Store&lt;/h1&gt;
+    &lt;/div&gt;
+    &lt;div style="background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"&gt;
+        &lt;h2 style="color: #333333; margin-top: 0; text-align: center;"&gt;Your Magic Link&lt;/h2&gt;
+        &lt;p style="color: #555555; text-align: center; margin-bottom: 30px;"&gt;Click the secure link below to instantly log in to your Cleverpoly Partner Dashboard.&lt;/p&gt;
+        &lt;div style="text-align: center;"&gt;
+            &lt;a href="{{ .ConfirmationURL }}" style="background-color: #000000; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;"&gt;Log In securely&lt;/a&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+</div>
+
+<div class="template-box">
+    <h2>4. Change Email Address</h2>
+<pre>
+&lt;div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px;"&gt;
+    &lt;div style="text-align: center; margin-bottom: 20px;"&gt;
+        &lt;h1 style="color: #333333; margin: 0; font-size: 24px; font-weight: bold;"&gt;Cleverpoly Store&lt;/h1&gt;
+    &lt;/div&gt;
+    &lt;div style="background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"&gt;
+        &lt;h2 style="color: #333333; margin-top: 0; text-align: center;"&gt;Confirm Email Change&lt;/h2&gt;
+        &lt;p style="color: #555555; text-align: center; margin-bottom: 30px;"&gt;We received a request to update the email address for your Cleverpoly account to &lt;strong&gt;{{ .Email }}&lt;/strong&gt;. Click below to confirm this change.&lt;/p&gt;
+        &lt;div style="text-align: center;"&gt;
+            &lt;a href="{{ .ConfirmationURL }}" style="background-color: #000000; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;"&gt;Confirm New Email&lt;/a&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+</div>
+
+<div class="template-box">
+    <h2>5. Reset Password</h2>
+<pre>
+&lt;div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px;"&gt;
+    &lt;div style="text-align: center; margin-bottom: 20px;"&gt;
+        &lt;h1 style="color: #333333; margin: 0; font-size: 24px; font-weight: bold;"&gt;Cleverpoly Store&lt;/h1&gt;
+    &lt;/div&gt;
+    &lt;div style="background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"&gt;
+        &lt;h2 style="color: #333333; margin-top: 0; text-align: center;"&gt;Reset your password&lt;/h2&gt;
+        &lt;p style="color: #555555; text-align: center; margin-bottom: 30px;"&gt;We received a request to reset the password for your Cleverpoly Partner account. Click the button below to choose a new password. If you didn't request this, you can safely ignore this email.&lt;/p&gt;
+        &lt;div style="text-align: center;"&gt;
+            &lt;a href="{{ .ConfirmationURL }}" style="background-color: #000000; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;"&gt;Reset Password&lt;/a&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+</div>
+
+</body>
+</html>

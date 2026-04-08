@@ -56,7 +56,7 @@ export async function saveStripeConnection(formData: FormData) {
     const whBody = new URLSearchParams({
         url: webhookUrl,
         'enabled_events[]': 'checkout.session.completed',
-        description: 'Affiliate Platform — auto-registered',
+        description: 'AffiliateMango — auto-registered',
     });
     // Add more events
     ['customer.subscription.created', 'invoice.payment_succeeded'].forEach(e =>

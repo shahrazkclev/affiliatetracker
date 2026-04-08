@@ -22,7 +22,7 @@ export async function checkEmailConfirmed(email: string): Promise<{ confirmed: b
 }
 
 /** Step 1 of sign-up: send confirmation link email before showing the application form */
-export async function sendSignupConfirmation(formData: FormData): Promise<{ error?: string }> {
+export async function sendSignupConfirmation(formData: FormData): Promise<{ error?: string; existingUser?: boolean }> {
     const supabase = await createClient();
     const admin = getAdminClient();
     const email = (formData.get('email') as string)?.trim().toLowerCase();
@@ -36,7 +36,7 @@ export async function sendSignupConfirmation(formData: FormData): Promise<{ erro
         .maybeSingle();
 
     if (existingAffiliate) {
-        return { error: 'An account with this email already exists. Please sign in instead.' };
+        return { existingUser: true };
     }
 
     // Send confirmation link — on click it redirects to /auth/callback

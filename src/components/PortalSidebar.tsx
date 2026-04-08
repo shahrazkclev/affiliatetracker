@@ -42,16 +42,29 @@ export async function PortalSidebar() {
                         />
                     </div>
                 ) : (
-                    <div>
-                        <p className="text-xl font-bold text-zinc-100">Cleverpoly</p>
-                        <div className="text-[10px] uppercase tracking-widest text-amber-500/70 mt-1 font-mono">
-                            Affiliate Terminal
+                    <div className="flex items-center gap-3 ml-2">
+                        <Image
+                            src="/affiliatemango_logo.png"
+                            alt="AffiliateMango Logo"
+                            width={80}
+                            height={80}
+                            className="w-14 h-14 object-contain scale-[1.5] -my-6 -ml-3 -mr-2"
+                        />
+                        <div className="flex flex-col justify-center">
+                            <h1 className="text-lg font-bold text-zinc-100 flex items-center gap-2 group cursor-pointer transition-all duration-300">
+                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-zinc-100 to-zinc-400 z-10 relative">
+                                    AffiliateMango
+                                </span>
+                            </h1>
+                            <div className="text-[9px] uppercase tracking-widest text-amber-500/70 mt-0 font-mono z-10 relative">Affiliate Terminal</div>
                         </div>
                     </div>
                 )}
             </div>
 
-            <PortalSidebarNav />
+            <div className="mt-4 flex-1">
+                <PortalSidebarNav />
+            </div>
         </aside>
     );
 }

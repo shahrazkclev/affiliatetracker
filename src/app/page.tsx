@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { sendSignupConfirmation, checkEmailConfirmed } from "./actions";
+import { loginWithPassword } from "@/app/login/actions";
 import { AlertCircle, Loader2, Mail, CheckCircle2, RefreshCw } from 'lucide-react';
 
 function friendlyAuthError(code: string | null, description: string | null): string | null {
@@ -20,7 +21,7 @@ function friendlyAuthError(code: string | null, description: string | null): str
 function AffiliateRegistrationPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [sent, setSent] = useState(false);
+    const [step, setStep] = useState<'email' | 'sent' | 'password'>('email');
     const [email, setEmail] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isSending, startSending] = useTransition();
@@ -62,8 +63,13 @@ function AffiliateRegistrationPageInner() {
         startSending(async () => {
             const result = await sendSignupConfirmation(fd);
             if (result?.error) { setError(result.error); return; }
+            if (result?.existingUser) {
+                setEmail(typedEmail);
+                setStep('password');
+                return;
+            }
             setEmail(typedEmail);
-            setSent(true);
+            setStep('sent');
         });
     }
 
@@ -79,6 +85,17 @@ function AffiliateRegistrationPageInner() {
         });
     }
 
+    async function handlePasswordLogin(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        setError(null);
+        const fd = new FormData(e.currentTarget);
+        fd.set('email', email);
+        startSending(async () => {
+            const result = await loginWithPassword(fd);
+            if (result?.error) setError(result.error);
+        });
+    }
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#0e0e10] p-4">
             <Card className="w-full max-w-md bg-zinc-900 border-zinc-800 shadow-2xl">
@@ -89,9 +106,9 @@ function AffiliateRegistrationPageInner() {
                     <div>
                         <CardTitle className="text-2xl font-bold text-zinc-100">Join the Affiliate Program</CardTitle>
                         <CardDescription className="text-zinc-400 mt-1">
-                            {sent
-                                ? 'A confirmation link has been sent to your email'
-                                : 'Enter your email address to get started'}
+                            {step === 'sent' && 'A confirmation link has been sent to your email'}
+                            {step === 'password' && <span className="text-orange-400">Account found. Welcome back!</span>}
+                            {step === 'email' && 'Enter your email address to get started'}
                         </CardDescription>
                     </div>
                 </CardHeader>
@@ -104,7 +121,7 @@ function AffiliateRegistrationPageInner() {
                         </div>
                     )}
 
-                    {!sent ? (
+                    {step === 'email' && (
                         <form onSubmit={handleSend} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="email" className="text-zinc-300 text-sm">Email Address</Label>
@@ -119,7 +136,33 @@ function AffiliateRegistrationPageInner() {
                                     : 'Send Confirmation Link'}
                             </Button>
                         </form>
-                    ) : (
+                    )}
+
+                    {step === 'password' && (
+                        <form onSubmit={handlePasswordLogin} className="space-y-4">
+                            <div className="flex items-center gap-2 bg-zinc-800/60 border border-zinc-700 px-3 py-2 rounded-lg text-sm text-zinc-400 mb-4">
+                                <span className="truncate flex-1">{email}</span>
+                                <button type="button" onClick={() => { setStep('email'); setError(null); }}
+                                    className="text-[11px] text-orange-400 hover:underline shrink-0">Change</button>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="password" className="text-zinc-300 text-sm">Welcome back! Please enter your password</Label>
+                                <Input id="password" name="password" type="password" required autoFocus
+                                    className="bg-zinc-950 border-zinc-700 text-zinc-100 placeholder:text-zinc-600 focus-visible:ring-orange-500/50" />
+                            </div>
+                            <Button type="submit" disabled={isSending}
+                                className="w-full bg-orange-600 hover:bg-orange-500 text-white h-11 font-semibold disabled:opacity-60">
+                                {isSending
+                                    ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Signing In…</>
+                                    : 'Sign In'}
+                            </Button>
+                            <a href="/login" className="block text-center text-xs text-zinc-500 hover:text-zinc-300 transition-colors py-2">
+                                Forgot password?
+                            </a>
+                        </form>
+                    )}
+
+                    {step === 'sent' && (
                         <div className="space-y-5">
                             {/* Email sent info */}
                             <div className="flex items-start gap-3 bg-zinc-800/50 border border-zinc-700/60 rounded-xl p-4">
@@ -169,7 +212,7 @@ function AffiliateRegistrationPageInner() {
                                 </button>
                             </form>
 
-                            <button type="button" onClick={() => { setSent(false); setError(null); }}
+                            <button type="button" onClick={() => { setStep('email'); setError(null); }}
                                 className="w-full text-xs text-zinc-700 hover:text-zinc-500 transition-colors">
                                 ← Use a different email address
                             </button>

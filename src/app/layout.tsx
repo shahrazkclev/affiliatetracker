@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Cleverpoly Affiliates",
-  description: "Affiliate Platform",
+  description: "AffiliateMango",
 };
 
 export default function RootLayout({

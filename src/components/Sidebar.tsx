@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, UserPlus, DollarSign, Megaphone, MonitorPlay, Wallet, History, Settings, Network, GitMerge } from "lucide-react";
+import Image from "next/image";
+import { Home, Users, UserPlus, DollarSign, Megaphone, MonitorPlay, Wallet, History, Settings, Network, GitMerge, CreditCard } from "lucide-react";
 
 const navGroups = [
   {
@@ -27,6 +28,7 @@ const navGroups = [
     items: [
       { icon: Megaphone, label: "Campaigns", href: "/admin/campaigns" },
       { icon: MonitorPlay, label: "Portal Config", href: "/admin/portal-config" },
+      { icon: CreditCard, label: "Subscription", href: "/admin/subscription" },
       { icon: Settings, label: "Settings", href: "/admin/settings" },
     ]
   }
@@ -45,17 +47,27 @@ export function Sidebar() {
     <aside className="w-64 h-screen bg-zinc-950 text-zinc-400 flex flex-col border-r border-zinc-800 shadow-2xl z-10 relative">
       <div className="absolute top-0 right-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500/20 to-transparent" />
 
-      <div className="p-6">
-        <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2 group cursor-pointer transition-all duration-300">
-          <Network className="w-6 h-6 text-amber-400 group-hover:rotate-12 transition-transform duration-500" />
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-zinc-100 to-zinc-400">
-            Cleverpoly
-          </span>
-        </h1>
-        <div className="text-[10px] uppercase tracking-widest text-amber-500/70 mt-1 font-mono">Affiliate Platform</div>
+      <div className="p-6 pb-2">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/affiliatemango_logo.png"
+            alt="AffiliateMango Logo"
+            width={80}
+            height={80}
+            className="w-16 h-16 object-contain scale-[1.5] -my-6 -ml-3 -mr-2"
+          />
+          <div className="flex flex-col justify-center">
+            <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2 group cursor-pointer transition-all duration-300">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-zinc-100 to-zinc-400 z-10 relative">
+                AffiliateMango
+              </span>
+            </h1>
+            <div className="text-[10px] uppercase tracking-widest text-amber-500/70 mt-0 font-mono z-10 relative">Admin Dashboard</div>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex-1 px-3 space-y-6 overflow-y-auto mt-4">
+      <nav className="flex-1 px-3 space-y-6 overflow-y-auto mt-6">
         {navGroups.map((group) => (
           <div key={group.title} className="space-y-1.5">
             <h3 className="px-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2 font-mono">
