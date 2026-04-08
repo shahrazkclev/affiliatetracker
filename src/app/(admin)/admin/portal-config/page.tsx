@@ -42,7 +42,7 @@ export default function PortalConfigPage() {
             if (config?.theme) setTheme(config.theme);
             if (config?.logo_sidebar_height) setSidebarHeight(config.logo_sidebar_height);
             if (config?.logo_email_height) setEmailHeight(config.logo_email_height);
-            setIsPro(config?.plan_name === 'pro' || config?.is_free_forever);
+            setIsPro(config?.plan_name === 'pro' || config?.is_free_forever === true);
         });
     }, []);
 

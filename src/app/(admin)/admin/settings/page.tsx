@@ -11,6 +11,9 @@ import { PayoutEmailCard } from "./PayoutEmailCard";
 import { SmtpSettingsCard } from "./SmtpSettingsCard";
 import { createClient } from "@/utils/supabase/server";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function GlobalSettingsPage() {
     const supabase = await createClient();
 
@@ -26,13 +29,17 @@ export default async function GlobalSettingsPage() {
     const lastSyncedAt = latestSync?.last_synced_at || null;
 
     // Fetch org settings including SMTP, Domain and Payout Notification
-    const { data: org } = await supabase
+    const { data: org, error: orgError } = await supabase
         .from('organizations')
         .select('payout_notification_email, custom_domain, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from_email, plan_name, is_free_forever')
         .limit(1)
         .single();
+        
+    if (orgError && orgError.code !== 'PGRST116') {
+        console.error("Error fetching org in settings:", orgError);
+    }
 
-    const isPro = org?.plan_name === 'pro' || org?.is_free_forever;
+    const isPro = org?.plan_name === 'pro' || org?.is_free_forever === true;
 
     const portalUrl = org?.custom_domain 
         ? `https://${org.custom_domain}` 
