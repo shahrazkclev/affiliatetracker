@@ -41,3 +41,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 marketing-site/
+
+# Database files & scripts
+*.sql
+schema.sql
+supabase_billing_migration.sql
+test_api.js
+check_urls.js
+fix_db.js
