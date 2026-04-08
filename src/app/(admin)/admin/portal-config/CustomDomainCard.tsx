@@ -138,6 +138,12 @@ export function CustomDomainCard({
                             </div>
                         )}
                         
+                        {!validationData?.txt_name && (domainStatus === 'pending_validation' || domainStatus === 'pending') && (
+                            <p className="mt-4 text-[11px] text-zinc-500 bg-zinc-900/50 p-3 rounded border border-zinc-800 leading-relaxed">
+                                <strong className="text-zinc-300">Awaiting DNS:</strong> We are observing your DNS provider (e.g. Squarespace, GoDaddy) as it broadcasts your CNAME record globally. Cloudflare is performing automated HTTP/Edge routing checks securely in the background. This typically takes 15–30 minutes to finalize SSL generation. No further action is required from you!
+                            </p>
+                        )}
+                        
                         {msg && (
                             <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${
                                 msg.ok ? 'bg-emerald-950/30 border-emerald-500/20 text-emerald-400' : 'bg-red-950/30 border-red-500/20 text-red-400'
