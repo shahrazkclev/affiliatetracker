@@ -11,12 +11,16 @@ import { saveCustomDomain, getCustomDomainStatus, removeCustomDomain } from "./c
 
 export function CustomDomainCard({ 
     currentDomain,
+    refreshClock = 0,
     onDomainChange,
-    onStatusChange
+    onStatusChange,
+    onCheckingChange
 }: { 
     currentDomain: string | null;
+    refreshClock?: number;
     onDomainChange: (domain: string | null) => void;
     onStatusChange: (status: string | null) => void;
+    onCheckingChange?: (isChecking: boolean) => void;
 }) {
     const [domain, setDomain] = useState(currentDomain || '');
     const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -29,17 +33,29 @@ export function CustomDomainCard({
     const [validationData, setValidationData] = useState<any>(null);
 
     useEffect(() => {
+        if (onCheckingChange) onCheckingChange(isChecking);
+    }, [isChecking, onCheckingChange]);
+
+    useEffect(() => {
         if (currentDomain) {
+            setIsChecking(true);
             getCustomDomainStatus(currentDomain).then(res => {
-                setDomainStatus(res.status);
-                onStatusChange(res.status);
+                let finalStatus = res.status;
+                // Even if DNS resolves (active), SSL might still be pending HTTP validation or issuance
+                if (res.status === 'active' && res.ssl && res.ssl.status !== 'active') {
+                    finalStatus = res.ssl.status;
+                }
+                
+                setDomainStatus(finalStatus);
+                onStatusChange(finalStatus);
                 if (res.ssl?.validation_records) setValidationData(res.ssl.validation_records[0]);
                 setIsChecking(false);
             });
         } else {
             onStatusChange(null);
+            setValidationData(null);
         }
-    }, [currentDomain]);
+    }, [currentDomain, refreshClock]);
 
     async function handleRemove() {
         if (!currentDomain || !confirm("Are you sure you want to completely remove this custom domain map?")) return;

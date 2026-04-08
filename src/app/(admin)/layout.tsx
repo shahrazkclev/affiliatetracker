@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/Sidebar";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
+import { PaywallWrapper } from "@/components/PaywallWrapper";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,6 +21,29 @@ export default async function AdminLayout({
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    let orgName = "Workspace Settings";
+    let isExpired = false;
+
+    if (user?.id) {
+        // We select the new billing columns safely. If they don't exist yet, we catch the error gracefully
+        const { data: org, error } = await supabase
+            .from('organizations')
+            .select('name, custom_domain, plan_status, trial_ends_at')
+            .eq('owner_id', user.id)
+            .maybeSingle();
+
+        if (!error && org) {
+            if (org.name) orgName = org.name;
+            
+            const isBillingActive = org.plan_status === 'active';
+            const trialEndsAt = org.trial_ends_at ? new Date(org.trial_ends_at) : new Date();
+            
+            if (!isBillingActive && trialEndsAt.getTime() < Date.now()) {
+                isExpired = true;
+            }
+        }
+    }
+
     return (
         <div
             className="dark bg-zinc-950 text-zinc-200 h-screen overflow-hidden flex relative"
@@ -38,7 +62,7 @@ export default async function AdminLayout({
                 <header className="h-16 border-b border-zinc-800/80 flex items-center pl-16 md:pl-6 pr-6 justify-between bg-zinc-950/80 backdrop-blur-md z-10 shadow-sm shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="bg-zinc-900 border border-zinc-800 font-mono text-xs px-3 py-1.5 rounded-md text-zinc-400 shadow-inner">
-                            affiliatemango.com
+                            {orgName}
                         </div>
                     </div>
 
@@ -76,7 +100,9 @@ export default async function AdminLayout({
                     </DropdownMenu>
                 </header>
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative">
-                    {children}
+                    <PaywallWrapper isExpired={isExpired}>
+                        {children}
+                    </PaywallWrapper>
                 </div>
             </main>
         </div>

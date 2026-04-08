@@ -26,6 +26,7 @@ export default function PortalConfigPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [domainStatus, setDomainStatus] = useState<string | null>(null);
     const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
+    const [refreshClock, setRefreshClock] = useState(0);
 
     const [primaryColor, setPrimaryColor] = useState("#f59e0b");
     const [theme, setTheme] = useState("dark");
@@ -82,10 +83,7 @@ export default function PortalConfigPage() {
 
     async function handleRefreshStatus() {
         if (!domain) return;
-        setIsRefreshingStatus(true);
-        const res = await getCustomDomainStatus(domain);
-        setDomainStatus(res.status);
-        setTimeout(() => setIsRefreshingStatus(false), 500);
+        setRefreshClock(c => c + 1);
     }
 
     const activeLogo = previewUrl || logoUrl;
@@ -108,8 +106,10 @@ export default function PortalConfigPage() {
                     {/* Domain Settings UI Injection */}
                     <CustomDomainCard 
                         currentDomain={domain || null} 
+                        refreshClock={refreshClock}
                         onDomainChange={(d) => setDomain(d || "")} 
                         onStatusChange={setDomainStatus} 
+                        onCheckingChange={setIsRefreshingStatus}
                     />
 
                     {/* Branding & Logo */}
