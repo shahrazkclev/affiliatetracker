@@ -67,9 +67,12 @@ export async function middleware(request: NextRequest) {
     const hostname = request.headers.get("x-mango-tenant-host") || request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
     const pathname = request.nextUrl.pathname;
     const isLocalhost = hostname.includes("localhost") || hostname.includes("127.0.0.1");
-    // We treat anything that isn't localhost and isn't dashboard as a "Tenant/Partner Domain"
     const isDashboard = hostname.startsWith("dashboard.affiliatemango.com") || hostname.startsWith("admin.affiliatemango.com");
-    const isTenantDomain = !isDashboard && !isLocalhost;
+    const isGenericPartners = hostname === "partners.affiliatemango.com";
+    const isMarketingSite = hostname === "affiliatemango.com" || hostname === "www.affiliatemango.com";
+    
+    // We treat anything that isn't localhost, dashboard, generic partners, or marketing site as a "Tenant/Partner Domain"
+    const isTenantDomain = !isDashboard && !isLocalhost && !isGenericPartners && !isMarketingSite;
 
     if (isTenantDomain) {
         // Tenants (and Custom Domains) CANNOT access /admin
