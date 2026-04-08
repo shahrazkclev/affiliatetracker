@@ -19,6 +19,17 @@ export default async function AdminDashboard() {
     .maybeSingle();
 
   const orgId = org?.id;
+
+  if (!orgId) {
+      return (
+          <div className="flex h-full items-center justify-center p-8">
+              <div className="bg-zinc-900 border border-red-500/30 text-amber-500/80 px-6 py-4 rounded-xl shadow-xl max-w-md text-center text-sm font-mono tracking-wide">
+                  Organization configuration missing or unauthorized. Please verify your platform status.
+              </div>
+          </div>
+      );
+  }
+
   const portalUrl = org?.custom_domain ? `https://${org.custom_domain}` : (process.env.NEXT_PUBLIC_SITE_URL || "https://affiliatemango.com");
 
   // Fetch real aggregated data

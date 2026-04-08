@@ -19,7 +19,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         const hostname = window.location.hostname;
-        if (hostname.startsWith('dashboard.') || hostname.startsWith('admin.')) {
+        if (hostname.startsWith('dashboard.') || hostname.startsWith('admin.') || hostname === 'affiliatemango.com' || hostname === 'www.affiliatemango.com') {
             setIsDashboard(true);
         }
     }, []);
@@ -186,14 +186,14 @@ export default function LoginPage() {
                             </button>
                         </div>
                     )}
-
-                    {!isDashboard && (
-                        <div className="mt-6 text-center text-sm">
-                            <span className="text-zinc-500">Don't have an account? </span>
-                            <a href="/" className="text-orange-400 font-medium hover:underline">Apply as Affiliate</a>
-                        </div>
-                    )}
                 </CardContent>
+
+                {!isDashboard && (
+                    <div className="mt-6 text-center text-sm">
+                        <span className="text-zinc-500">Don't have an account? </span>
+                        <a href="/" className="text-orange-400 font-medium hover:underline">Apply as Affiliate</a>
+                    </div>
+                )}
             </Card>
         </div>
     );

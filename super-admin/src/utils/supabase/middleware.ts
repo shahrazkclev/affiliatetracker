@@ -35,8 +35,7 @@ export async function updateSession(request: NextRequest) {
     const isDashboard = hostname.startsWith("dashboard.affiliatemango.com") || hostname.startsWith("admin.affiliatemango.com");
     const isLocalhost = hostname.includes("localhost") || hostname.includes("127.0.0.1");
     const isGenericPartners = hostname === "partners.affiliatemango.com";
-    const isMarketingSite = hostname === "affiliatemango.com" || hostname === "www.affiliatemango.com";
-    const isTenantDomain = !isDashboard && !isLocalhost && !isGenericPartners && !isMarketingSite;
+    const isTenantDomain = !isDashboard && !isLocalhost && !isGenericPartners;
 
     let effectivePath = request.nextUrl.pathname;
     
@@ -74,11 +73,6 @@ export async function updateSession(request: NextRequest) {
         if (effectivePath === '/') {
             if (isTenantDomain) effectivePath = '/portal';
             if (isDashboard) effectivePath = '/admin';
-            if (isMarketingSite) {
-                 const url = request.nextUrl.clone();
-                 url.pathname = '/login';
-                 return NextResponse.redirect(url);
-            }
         }
     }
 
