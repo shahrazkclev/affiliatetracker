@@ -1,4 +1,5 @@
 import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, MousePointerClick, Users, Wallet, Link as LinkIcon, Activity } from "lucide-react";
 import { PortalLinkGenerator } from "@/components/PortalLinkGenerator";
@@ -6,6 +7,10 @@ import { redirect } from "next/navigation";
 
 export default async function PortalHome() {
     const supabase = await createClient();
+    const admin = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // Get signed-in user
     const { data: { user } } = await supabase.auth.getUser();
@@ -18,7 +23,7 @@ export default async function PortalHome() {
     }
 
     // Find affiliate record for this user scoped to THIS specific organization
-    const { data: affiliate } = await supabase
+    const { data: affiliate } = await admin
         .from('affiliates')
         .select('*, campaign:campaigns(name, landing_url), org:organizations(custom_domain)')
         .eq('email', user?.email ?? '')

@@ -30,6 +30,8 @@ export async function createClient() {
 
 import { headers } from 'next/headers';
 
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+
 export async function getResolvedOrgId(): Promise<string | null> {
     const h = await headers();
     const slug = h.get('x-org-slug');
@@ -46,12 +48,16 @@ export async function getResolvedOrgId(): Promise<string | null> {
     const searchValue = slug || (isLocalhost || isDashboard ? null : hostname);
 
     const supabase = await createClient();
+    const admin = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     if (searchValue && !isGenericPartners) {
         // Try exact match on custom_domain or app_url
         const possibleSlug = searchValue.replace('.affiliatemango.com', '');
         
-        const { data: orgByDomain } = await supabase
+        const { data: orgByDomain } = await admin
             .from('organizations')
             .select('id')
             .or(`custom_domain.ilike.${searchValue},app_url.ilike.${searchValue},app_url.ilike.${possibleSlug}`)
@@ -60,7 +66,7 @@ export async function getResolvedOrgId(): Promise<string | null> {
         if (orgByDomain && orgByDomain.length > 0) return orgByDomain[0].id;
         
         // Fallback match on name
-        const { data: orgByName } = await supabase
+        const { data: orgByName } = await admin
             .from('organizations')
             .select('id')
             .ilike('name', possibleSlug)

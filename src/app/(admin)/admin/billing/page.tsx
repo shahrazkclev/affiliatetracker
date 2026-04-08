@@ -14,7 +14,7 @@ export default async function BillingPage() {
     // Try to safely fetch billing info, ignoring failure if the columns are missing (since the user might not have run the migration yet)
     const { data: org, error } = await supabase
         .from('organizations')
-        .select('plan_status, trial_ends_at, plan_name')
+        .select('plan_status, trial_ends_at, plan_name, is_free_forever')
         .eq('owner_id', user.id)
         .maybeSingle();
 
@@ -23,6 +23,7 @@ export default async function BillingPage() {
         console.error("Billing columns may be missing. Did you run the SQL migration?");
     }
 
+    const isFreeForever = org?.is_free_forever === true;
     const planStatus = org?.plan_status || 'trialing';
     const planName = org?.plan_name || 'Free Trial';
     const trialEndsAt = org?.trial_ends_at ? new Date(org.trial_ends_at) : new Date();
@@ -41,9 +42,13 @@ export default async function BillingPage() {
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <h2 className="text-2xl font-semibold text-white capitalize">
-                                {isActive ? `${planName} Plan` : 'Free Trial'}
+                                {isFreeForever ? 'Free Forever Plan' : (isActive ? `${planName} Plan` : 'Free Trial')}
                             </h2>
-                            {isActive ? (
+                            {isFreeForever ? (
+                                <span className="bg-zinc-100 text-zinc-900 px-3 py-1 rounded-full text-xs font-bold shadow-sm shadow-white/20 border border-white">
+                                    Free Forever
+                                </span>
+                            ) : isActive ? (
                                 <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-medium border border-emerald-500/20">
                                     Active
                                 </span>
@@ -58,34 +63,41 @@ export default async function BillingPage() {
                             )}
                         </div>
                         
-                        {!isActive && (
+                        {!isActive && !isFreeForever && (
                             <p className="text-zinc-400 text-sm mt-1">
                                 {trialExpired 
                                     ? "Your 14-day free trial has expired. Please upgrade to continue using your admin dashboard."
                                     : `Your 14-day free trial ends on ${trialEndsAt.toLocaleDateString()}.`}
                             </p>
                         )}
-                        {isActive && (
+                        {(isActive || isFreeForever) && (
                             <p className="text-zinc-400 text-sm mt-1">
-                                Your account is fully active and billed securely via Stripe.
+                                {isFreeForever 
+                                    ? 'Your account has been granted unlimited lifetime access to all features.'
+                                    : 'Your account is fully active and billed securely via Stripe.'}
                             </p>
                         )}
                     </div>
 
                     <div className="shrink-0">
-                        {isActive && (
+                        {isActive && !isFreeForever && (
                             <form action={createSaasPortalSession}>
                                 <button type="submit" className="bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-2 px-6 rounded-lg transition border border-zinc-700">
                                     Manage Subscription
                                 </button>
                             </form>
                         )}
+                        {isFreeForever && (
+                            <div className="bg-zinc-800/50 text-zinc-300 font-medium py-2 px-6 rounded-lg border border-zinc-700/50 cursor-not-allowed">
+                                Lifetime Access
+                            </div>
+                        )}
                     </div>
 
                 </div>
             </div>
 
-            {!isActive && (
+            {!isActive && !isFreeForever && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                     <PricingCard 
                         title="Base Plan"
