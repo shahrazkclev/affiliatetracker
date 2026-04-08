@@ -63,6 +63,36 @@ export async function middleware(request: NextRequest) {
         }
     }
 
+    // ── Route Isolation Layer by Hostname ──────────────────────
+    const hostname = request.headers.get("x-mango-tenant-host") || request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+    const pathname = request.nextUrl.pathname;
+    const isLocalhost = hostname.includes("localhost") || hostname.includes("127.0.0.1");
+    // We treat anything that isn't localhost and isn't dashboard as a "Tenant/Partner Domain"
+    const isDashboard = hostname.startsWith("dashboard.affiliatemango.com") || hostname.startsWith("admin.affiliatemango.com");
+    const isTenantDomain = !isDashboard && !isLocalhost;
+
+    if (isTenantDomain) {
+        // Tenants (and Custom Domains) CANNOT access /admin
+        if (pathname.startsWith('/admin')) {
+            return NextResponse.redirect(new URL('/portal', request.url));
+        }
+        // Internally rewrite root to /portal for seamless custom domains
+        if (pathname === '/') {
+            return NextResponse.rewrite(new URL('/portal', request.url));
+        }
+    } 
+    
+    if (isDashboard) {
+        // Dashboards CANNOT access /portal
+        if (pathname.startsWith('/portal')) {
+            return NextResponse.redirect(new URL('/admin', request.url));
+        }
+        // Internally rewrite root to /admin for snappy admin loading
+        if (pathname === '/') {
+            return NextResponse.rewrite(new URL('/admin', request.url));
+        }
+    }
+
     return response;
 }
 
