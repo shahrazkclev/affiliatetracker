@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import { createSaasCheckoutSession, createSaasPortalSession } from '@/app/actions/saas-billing';
+import PricingCard from '@/components/PricingCard';
 
 export default async function BillingPage() {
     const supabase = await createClient();
@@ -86,64 +87,26 @@ export default async function BillingPage() {
 
             {!isActive && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                    {/* Base Plan */}
-                    <div className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-xl p-8 flex flex-col relative transition-all">
-                        <div className="flex-1">
-                            <h3 className="text-xl font-semibold text-white mb-2">Base Plan</h3>
-                            <div className="flex items-end gap-1 mb-6">
-                                <span className="text-3xl font-bold text-white">$49</span>
-                                <span className="text-zinc-400 mb-1">/mo</span>
-                            </div>
-                            <ul className="space-y-3 mb-8">
-                                <li className="flex items-center text-zinc-300">
-                                    <span className="text-emerald-500 mr-3">✓</span> Unlimited Affiliates
-                                </li>
-                                <li className="flex items-center text-zinc-300">
-                                    <span className="text-emerald-500 mr-3">✓</span> Affiliate Portal Access
-                                </li>
-                                <li className="flex items-center text-zinc-300">
-                                    <span className="text-emerald-500 mr-3">✓</span> Automated Stripe Payouts
-                                </li>
-                            </ul>
-                        </div>
-                        <form action={createSaasCheckoutSession} className="w-full">
-                            <input type="hidden" name="plan" value="base" />
-                            <button type="submit" className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-3 px-6 rounded-lg transition border border-zinc-700">
-                                Choose Base
-                            </button>
-                        </form>
-                    </div>
+                    <PricingCard 
+                        title="Base Plan"
+                        price="$24"
+                        features={["Unlimited Affiliates", "Affiliate Portal Access", "Automated Stripe Payouts"]}
+                        buttonText="Choose Base"
+                        formAction={createSaasCheckoutSession}
+                        planValue="base"
+                        index={0}
+                    />
 
-                    {/* Pro Plan */}
-                    <div className="bg-zinc-950 border border-brand-orange/50 rounded-xl p-8 flex flex-col relative shadow-[0_0_20px_rgba(249,115,22,0.1)]">
-                        <div className="absolute top-0 right-0 bg-brand-orange text-white text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl">
-                            Most Popular
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-xl font-semibold text-white mb-2">Pro Plan</h3>
-                            <div className="flex items-end gap-1 mb-6">
-                                <span className="text-3xl font-bold text-white">$99</span>
-                                <span className="text-zinc-400 mb-1">/mo</span>
-                            </div>
-                            <ul className="space-y-3 mb-8">
-                                <li className="flex items-center text-zinc-300">
-                                    <span className="text-emerald-500 mr-3">✓</span> Everything in Base
-                                </li>
-                                <li className="flex items-center text-zinc-300">
-                                    <span className="text-emerald-500 mr-3">✓</span> Custom Tenant Domain
-                                </li>
-                                <li className="flex items-center text-zinc-300">
-                                    <span className="text-emerald-500 mr-3">✓</span> Advanced Portal Customization
-                                </li>
-                            </ul>
-                        </div>
-                        <form action={createSaasCheckoutSession} className="w-full">
-                            <input type="hidden" name="plan" value="pro" />
-                            <button type="submit" className="w-full bg-brand-orange hover:bg-brand-orange/90 text-white font-medium py-3 px-6 rounded-lg transition shadow-lg shadow-brand-orange/20">
-                                Choose Pro
-                            </button>
-                        </form>
-                    </div>
+                    <PricingCard 
+                        title="Pro Plan"
+                        price="$49"
+                        features={["Everything in Base", "Custom Tenant Domain", "Advanced Portal Customization"]}
+                        isPopular={true}
+                        buttonText="Choose Pro"
+                        formAction={createSaasCheckoutSession}
+                        planValue="pro"
+                        index={1}
+                    />
                 </div>
             )}
         </div>

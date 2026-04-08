@@ -42,7 +42,7 @@ export async function saveCustomDomain(domain: string) {
                 body: JSON.stringify({
                     hostname: cleanDomain,
                     ssl: {
-                        method: "http",
+                        method: "txt",
                         type: "dv"
                     }
                 })
