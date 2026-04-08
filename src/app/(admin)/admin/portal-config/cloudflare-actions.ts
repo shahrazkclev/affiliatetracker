@@ -42,7 +42,7 @@ export async function saveCustomDomain(domain: string) {
                 body: JSON.stringify({
                     hostname: cleanDomain,
                     ssl: {
-                        method: "txt",
+                        method: "http",
                         type: "dv"
                     }
                 })
@@ -72,7 +72,7 @@ export async function saveCustomDomain(domain: string) {
             return { success: false, error: error.message };
         }
 
-        revalidatePath('/admin/settings');
+        revalidatePath('/admin/portal-config');
         return { success: true };
     } catch (error: any) {
         return { success: false, error: error.message || 'Server error' };
@@ -94,9 +94,14 @@ export async function getCustomDomainStatus(domain: string) {
         const data = await res.json();
         
         if (data.success && data.result?.length > 0) {
-            return { success: true, status: data.result[0].status };
+            const h = data.result[0];
+            return { 
+                success: true, 
+                status: h.status,
+                ssl: h.ssl
+            };
         }
-        return { success: false, status: 'unknown' };
+        return { success: false, status: 'unknown', ssl: null };
     } catch {
         return { success: false, status: 'unknown' };
     }
@@ -135,7 +140,7 @@ export async function removeCustomDomain(domain: string) {
         // Update DB
         await supabase.from('organizations').update({ custom_domain: null }).eq('id', org.id);
         
-        revalidatePath('/admin/settings');
+        revalidatePath('/admin/portal-config');
         return { success: true };
     } catch (err: any) {
         return { success: false, error: err.message || 'Server error' };

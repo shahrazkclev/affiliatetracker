@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MonitorPlay, Globe, Palette, Upload, CheckCircle2, Copy, RefreshCw, ImagePlus, X, Save, Mail, PanelLeft, Smartphone, FileText } from "lucide-react";
+import { MonitorPlay, Globe, Palette, Upload, CheckCircle2, Copy, RefreshCw, ImagePlus, X, Save, Mail, PanelLeft, Smartphone, FileText, Loader2, CircleX } from "lucide-react";
 
 import { uploadLogoAndSave, getPortalConfig, saveBrandingSettings } from "./actions";
+import { getCustomDomainStatus } from "./cloudflare-actions";
 import { CustomDomainCard } from "./CustomDomainCard";
 import Image from "next/image";
 
@@ -23,6 +24,8 @@ export default function PortalConfigPage() {
     const [errorMsg, setErrorMsg] = useState("");
     const [brandingError, setBrandingError] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [domainStatus, setDomainStatus] = useState<string | null>(null);
+    const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
 
     const [primaryColor, setPrimaryColor] = useState("#f59e0b");
     const [theme, setTheme] = useState("dark");
@@ -77,6 +80,14 @@ export default function PortalConfigPage() {
         });
     }
 
+    async function handleRefreshStatus() {
+        if (!domain) return;
+        setIsRefreshingStatus(true);
+        const res = await getCustomDomainStatus(domain);
+        setDomainStatus(res.status);
+        setTimeout(() => setIsRefreshingStatus(false), 500);
+    }
+
     const activeLogo = previewUrl || logoUrl;
 
     return (
@@ -95,7 +106,11 @@ export default function PortalConfigPage() {
                 <div className="md:col-span-2 space-y-6">
 
                     {/* Domain Settings UI Injection */}
-                    <CustomDomainCard currentDomain={domain || null} />
+                    <CustomDomainCard 
+                        currentDomain={domain || null} 
+                        onDomainChange={(d) => setDomain(d || "")} 
+                        onStatusChange={setDomainStatus} 
+                    />
 
                     {/* Branding & Logo */}
                     <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl overflow-hidden">
@@ -247,20 +262,53 @@ export default function PortalConfigPage() {
                     </Card>
                 </div>
 
-                {/* Right Column */}
                 <div className="space-y-6 w-full font-sans">
                     <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl overflow-hidden">
                         <CardHeader className="flex flex-row items-center justify-between pb-4">
                             <CardTitle className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Status</CardTitle>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-500 hover:text-amber-500"><RefreshCw className="w-3.5 h-3.5" /></Button>
+                            <Button variant="ghost" size="icon" onClick={handleRefreshStatus} disabled={isRefreshingStatus || !domain} className="h-6 w-6 text-zinc-500 hover:text-amber-500">
+                                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingStatus ? 'animate-spin text-amber-500' : ''}`} />
+                            </Button>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {["SSL Certificate Active", "DNS Verified", "Global Edge CDN Routing"].map((s) => (
-                                <div key={s} className="flex items-center gap-3 text-sm text-zinc-400">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" /> {s}
-                                </div>
-                            ))}
-                            <Button className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700">Open Portal Preview</Button>
+                            <div className="flex items-center gap-3 text-sm text-zinc-400">
+                                {domain && domainStatus === 'active' ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                ) : domain && (domainStatus === 'pending_validation' || domainStatus === 'pending') ? (
+                                    <Loader2 className="w-4 h-4 text-yellow-500 animate-spin" />
+                                ) : (
+                                    <CircleX className="w-4 h-4 text-zinc-600" />
+                                )}
+                                <span className={domain && domainStatus === 'active' ? 'text-zinc-200' : ''}>SSL Certificate Active</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-3 text-sm text-zinc-400">
+                                {domain && domainStatus === 'active' ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                ) : domain && (domainStatus === 'pending_validation' || domainStatus === 'pending') ? (
+                                    <Loader2 className="w-4 h-4 text-yellow-500 animate-spin" />
+                                ) : (
+                                    <CircleX className="w-4 h-4 text-zinc-600" />
+                                )}
+                                <span className={domain && domainStatus === 'active' ? 'text-zinc-200' : ''}>DNS Verified</span>
+                            </div>
+
+                            <div className="flex items-center gap-3 text-sm text-zinc-400">
+                                {domain ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                ) : (
+                                    <CircleX className="w-4 h-4 text-zinc-600" />
+                                )}
+                                <span className={domain ? 'text-zinc-200' : ''}>Global Edge CDN Routing</span>
+                            </div>
+
+                            <Button 
+                                className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 disabled:opacity-50"
+                                disabled={!domain || domainStatus !== 'active'}
+                                onClick={() => window.open(`https://${domain}`, '_blank')}
+                            >
+                                Open Portal Preview
+                            </Button>
                         </CardContent>
                     </Card>
 

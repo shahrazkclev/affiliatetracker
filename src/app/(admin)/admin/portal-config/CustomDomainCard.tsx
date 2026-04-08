@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Globe, Loader2, CircleCheck, CircleX, ChevronRight, AlertCircle, Trash2 } from "lucide-react";
 import { saveCustomDomain, getCustomDomainStatus, removeCustomDomain } from "./cloudflare-actions";
 
-export function CustomDomainCard({ currentDomain }: { currentDomain: string | null }) {
+export function CustomDomainCard({ 
+    currentDomain,
+    onDomainChange,
+    onStatusChange
+}: { 
+    currentDomain: string | null;
+    onDomainChange: (domain: string | null) => void;
+    onStatusChange: (status: string | null) => void;
+}) {
     const [domain, setDomain] = useState(currentDomain || '');
     const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
     const [isPending, startTransition] = useTransition();
@@ -18,17 +26,20 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
     // Status tracking for existing domains
     const [domainStatus, setDomainStatus] = useState<string | null>(null);
     const [isChecking, setIsChecking] = useState(currentDomain ? true : false);
+    const [validationData, setValidationData] = useState<any>(null);
 
-    import('react').then((React) => {
-        React.useEffect(() => {
-            if (currentDomain) {
-                getCustomDomainStatus(currentDomain).then(res => {
-                    setDomainStatus(res.status);
-                    setIsChecking(false);
-                });
-            }
-        }, [currentDomain]);
-    });
+    useEffect(() => {
+        if (currentDomain) {
+            getCustomDomainStatus(currentDomain).then(res => {
+                setDomainStatus(res.status);
+                onStatusChange(res.status);
+                if (res.ssl?.validation_records) setValidationData(res.ssl.validation_records[0]);
+                setIsChecking(false);
+            });
+        } else {
+            onStatusChange(null);
+        }
+    }, [currentDomain]);
 
     async function handleRemove() {
         if (!currentDomain || !confirm("Are you sure you want to completely remove this custom domain map?")) return;
@@ -37,7 +48,9 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
             const res = await removeCustomDomain(currentDomain);
             if (res.success) {
                 setDomain('');
-                // Note: The page will normally refresh via NextJS revalidatePath in the action.
+                onDomainChange(null);
+                onStatusChange(null);
+                setValidationData(null);
             } else {
                 setMsg({ ok: false, text: res.error || 'Failed to remove domain.' });
             }
@@ -51,6 +64,14 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
             const res = await saveCustomDomain(domain);
             if (res.success) {
                 setMsg({ ok: true, text: 'Custom domain bound properly!' });
+                onDomainChange(domain);
+                setIsChecking(true);
+                // Background check instantly
+                const stat = await getCustomDomainStatus(domain);
+                setDomainStatus(stat.status);
+                onStatusChange(stat.status);
+                if (stat.ssl?.validation_records) setValidationData(stat.ssl.validation_records[0]);
+                setIsChecking(false);
             } else {
                 setMsg({ ok: false, text: res.error || 'Failed to bind domain.' });
             }
@@ -98,10 +119,23 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
                             </Button>
                         </div>
                         
-                        {(domainStatus === 'pending_validation' || domainStatus === 'pending') && (
-                            <p className="text-[11px] text-zinc-500 bg-zinc-900/50 p-3 rounded border border-zinc-800 leading-relaxed">
-                                <strong className="text-zinc-300">Awaiting DNS:</strong> We are waiting for your DNS provider (e.g. GoDaddy, Namecheap) to broadcast your new CNAME record globally. This typically takes 5–15 minutes but can take up to 24 hours depending on your registrar's TTL settings. No further action is required from your side.
-                            </p>
+                        {validationData?.txt_name && (domainStatus === 'pending_validation' || domainStatus === 'pending') && (
+                            <div className="mt-4 p-4 bg-zinc-950/50 border border-amber-500/20 rounded-md">
+                                <h4 className="text-sm font-semibold text-amber-500 mb-2 flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4" /> DNS TXT Verification Required
+                                </h4>
+                                <p className="text-xs text-zinc-400 mb-3">Your custom domain mapping requires a secondary layer of authentication via TXT validation. Please add this record urgently to issue your SSL Certificate!</p>
+                                <div className="grid grid-cols-[100px_1fr] gap-3 text-xs w-full overflow-hidden items-center text-zinc-300">
+                                    <span className="text-zinc-500">Record Type</span>
+                                    <span className="font-mono bg-black/40 px-2 py-1 rounded w-max border border-zinc-800">TXT</span>
+                                    
+                                    <span className="text-zinc-500">Name</span>
+                                    <div className="font-mono bg-black/40 px-2 py-1 rounded border border-zinc-800 overflow-x-auto whitespace-nowrap scrollbar-hide text-purple-400">{validationData.txt_name}</div>
+                                    
+                                    <span className="text-zinc-500">Value</span>
+                                    <div className="font-mono bg-black/40 px-2 py-1 rounded border border-zinc-800 break-all">{validationData.txt_value}</div>
+                                </div>
+                            </div>
                         )}
                         
                         {msg && (
@@ -128,7 +162,6 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
                         />
                     </div>
                 
-                    {/* Setup Instructions */}
                     <div className="bg-purple-950/20 border border-purple-500/10 p-3 rounded-md space-y-2">
                          <p className="text-xs text-zinc-300 font-medium tracking-wide">DNS Instructions</p>
                          <p className="text-[11px] text-zinc-500 leading-relaxed">
@@ -140,7 +173,7 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
                              <span className="text-xs text-purple-400 font-mono select-all">portal.affiliatemango.com</span>
                          </div>
                          <p className="text-[10px] text-zinc-500 mt-2 leading-tight">
-                            <strong className="text-zinc-400">Note:</strong> Global DNS propagation typically begins within a few minutes, but can take up to 24 hours depending on your registrar. If validation fails, please wait 5-10 minutes and try clicking Connect again.
+                            <strong className="text-zinc-400">Note:</strong> Global DNS propagation typically begins within a few minutes, but can take up to 24 hours. Cloudflare may request a secondary TXT validation post-submission.
                          </p>
                     </div>
 
