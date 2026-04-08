@@ -109,7 +109,7 @@ export default async function ReferredUsersPage({
                         <Network className="w-5 h-5 text-indigo-400" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">Referred Users</h2>
+                        <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">Customers</h2>
                         <p className="text-sm text-zinc-400 font-medium tracking-wide border-l-2 border-indigo-500/50 pl-2 ml-1 mt-1">
                             Signups attributed to your affiliates
                         </p>
@@ -187,8 +187,8 @@ export default async function ReferredUsersPage({
                                         {error
                                             ? 'Error fetching referrals.'
                                             : searchQuery
-                                            ? `No referred users matching "${searchQuery}".`
-                                            : 'No referred users yet.'}
+                                            ? `No customers matching "${searchQuery}".`
+                                            : 'No customers yet.'}
                                     </td>
                                 </tr>
                             )}

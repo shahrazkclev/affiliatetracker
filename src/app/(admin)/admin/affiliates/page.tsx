@@ -67,8 +67,8 @@ export default async function AffiliatesPage({
                         <Network className="w-5 h-5 text-orange-400" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">Affiliates</h2>
-                        <p className="text-sm text-zinc-400 font-medium tracking-wide border-l-2 border-orange-500/50 pl-2 ml-1 mt-1">Manage network affiliates</p>
+                        <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">Partners</h2>
+                        <p className="text-sm text-zinc-400 font-medium tracking-wide border-l-2 border-indigo-500/50 pl-2 ml-1 mt-1">Manage your ecosystem of partners and their commissions</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">

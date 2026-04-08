@@ -65,6 +65,18 @@ export async function submitAffiliateApplication(formData: FormData): Promise<{ 
 
     if (!name || !referralCode) return { error: 'All fields are required.' };
 
+    // Prevent duplicate crash if user is already an affiliate
+    const { data: alreadyAffiliate } = await admin
+        .from('affiliates')
+        .select('id')
+        .eq('email', user.email)
+        .maybeSingle();
+
+    if (alreadyAffiliate) {
+        redirect('/portal');
+        return {};
+    }
+
     // Check referral code uniqueness
     const { data: taken } = await admin
         .from('affiliates')

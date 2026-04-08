@@ -10,9 +10,9 @@ const navGroups = [
     title: "Overview",
     items: [
       { icon: Home, label: "Dashboard", href: "/admin" },
-      { icon: Users, label: "Affiliates", href: "/admin/affiliates" },
+      { icon: Users, label: "Partners", href: "/admin/affiliates" },
       { icon: GitMerge, label: "Referrals", href: "/admin/referrals" },
-      { icon: UserPlus, label: "Referred Users", href: "/admin/referred-users" },
+      { icon: UserPlus, label: "Customers", href: "/admin/referred-users" },
     ]
   },
 
