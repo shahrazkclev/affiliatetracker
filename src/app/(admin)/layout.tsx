@@ -38,7 +38,7 @@ export default async function AdminLayout({
                 <header className="h-16 border-b border-zinc-800/80 flex items-center pl-16 md:pl-6 pr-6 justify-between bg-zinc-950/80 backdrop-blur-md z-10 shadow-sm shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="bg-zinc-900 border border-zinc-800 font-mono text-xs px-3 py-1.5 rounded-md text-zinc-400 shadow-inner">
-                            cleverpoly.store
+                            affiliatemango.com
                         </div>
                     </div>
 

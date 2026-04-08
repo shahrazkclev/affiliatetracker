@@ -13,12 +13,13 @@ export default async function AdminDashboard() {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: org } = await supabase
     .from('organizations')
-    .select('id, stripe_webhook_id')
+    .select('id, stripe_webhook_id, custom_domain')
     .eq('owner_id', user?.id || '')
     .limit(1)
     .single();
 
   const orgId = org?.id;
+  const portalUrl = org?.custom_domain ? `https://${org.custom_domain}` : (process.env.NEXT_PUBLIC_SITE_URL || "https://affiliatemango.com");
 
   // Fetch real aggregated data
   const { count: affiliatesCount } = await supabase
@@ -83,7 +84,7 @@ export default async function AdminDashboard() {
   });
 
   return (
-    <div className="space-y-8 max-w-6xl font-sans">
+    <div className="space-y-6 w-full max-w-full font-sans">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
           <Network className="w-5 h-5 text-white" />
@@ -113,10 +114,10 @@ export default async function AdminDashboard() {
         <CardContent className="pt-4">
           <div className="flex flex-col sm:flex-row gap-4 items-center">
             <div className="flex-1 bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-3 flex items-center text-zinc-300 font-mono text-sm w-full shadow-inner">
-              <span className="text-zinc-500 mr-2">https://</span>partners.cleverpoly.store
+              {portalUrl}
             </div>
             <CopyButton
-              text="https://partners.cleverpoly.store"
+              text={portalUrl}
               className="w-full sm:w-auto bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 shadow-lg"
             />
           </div>

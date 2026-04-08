@@ -1,9 +1,9 @@
 /**
- * cleverpoly-tracker.js
+ * AffiliateMango-tracker.js
  * Self-hosted affiliate referral tracking — drop-in replacement for promotekit.js
  *
- * Usage: Add to <head> of your website (cleverpoly.store):
- *   <script async src="https://partners.cleverpoly.store/tracker.js"></script>
+ * Usage: Add to <head> of your website (affiliatemango.com):
+ *   <script async src="https://affiliatemango.com/tracker.js"></script>
  *
  * How it works:
  *   1. Reads ?via=CODE or ?ref=CODE from URL
@@ -17,7 +17,7 @@
     'use strict';
 
     const CONFIG = {
-        platformUrl: 'https://partners.cleverpoly.store',
+        platformUrl: 'https://affiliatemango.com',
         cookieName: 'cp_ref',
         cookieDays: 60,
         paramNames: ['via', 'ref', 'r'],   // URL params to check
@@ -27,7 +27,7 @@
     };
 
     function log(...args) {
-        if (CONFIG.debug) console.log('[Cleverpoly Tracker]', ...args);
+        if (CONFIG.debug) console.log('[AffiliateMango Tracker]', ...args);
     }
 
     // ── Cookie helpers ──────────────────────────────────────────────────────
@@ -59,7 +59,7 @@
         setCookie(CONFIG.cookieName, code, CONFIG.cookieDays);
         try { localStorage.setItem(CONFIG.cookieName, code); } catch (_) {}
         // Expose globally like promotekit does
-        window.cleverpoly_referral = code;
+        window.AffiliateMango_referral = code;
         window.cp_referral = code;
         log('Stored referral code:', code);
     }
@@ -121,7 +121,7 @@
         // 2. Check persisted referral (returning visitor within cookie window)
         const stored = getStoredReferral();
         if (stored) {
-            window.cleverpoly_referral = stored;
+            window.AffiliateMango_referral = stored;
             window.cp_referral = stored;
             updateStipeLinks(stored);
             observeDom(stored);

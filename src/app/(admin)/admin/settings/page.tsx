@@ -4,12 +4,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Settings as SettingsIcon, Download } from "lucide-react";
-import { SyncButton } from "./SyncButton";
+import { DataMigrationDialog } from "./DataMigrationDialog";
 import { StripeConnectCard } from "./StripeConnectCard";
 import { TrackingSnippetCard } from "./TrackingSnippetCard";
 import { PayoutEmailCard } from "./PayoutEmailCard";
 import { SmtpSettingsCard } from "./SmtpSettingsCard";
-import { CustomDomainCard } from "./CustomDomainCard";
 import { createClient } from "@/utils/supabase/server";
 
 export default async function GlobalSettingsPage() {
@@ -33,8 +32,12 @@ export default async function GlobalSettingsPage() {
         .limit(1)
         .single();
 
+    const portalUrl = org?.custom_domain 
+        ? `https://${org.custom_domain}` 
+        : (process.env.NEXT_PUBLIC_SITE_URL || "https://affiliatemango.com");
+
     return (
-        <div className="space-y-6 max-w-4xl font-sans">
+        <div className="space-y-6 w-full font-sans">
             <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
                     <SettingsIcon className="w-5 h-5 text-orange-400" />
@@ -51,7 +54,7 @@ export default async function GlobalSettingsPage() {
                 <StripeConnectCard />
                 
                 {/* ── Tracking Snippet ───────────────────────────────────────── */}
-                <TrackingSnippetCard />
+                <TrackingSnippetCard portalUrl={portalUrl} />
 
                 {/* ── Payout Notification Email ─────────────────────────────────── */}
                 <PayoutEmailCard currentEmail={org?.payout_notification_email || null} />
@@ -59,8 +62,6 @@ export default async function GlobalSettingsPage() {
                 {/* ── Custom SMTP Settings ─────────────────────────────────────── */}
                 <SmtpSettingsCard currentConfig={org || {}} />
 
-                {/* ── Tenant Custom Domain ─────────────────────────────────────── */}
-                <CustomDomainCard currentDomain={org?.custom_domain || null} />
 
                 <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group">
                     <CardHeader className="pb-4 border-b border-zinc-800/50">
@@ -82,7 +83,7 @@ export default async function GlobalSettingsPage() {
                                     </p>
                                 )}
                             </div>
-                            <SyncButton />
+                            <DataMigrationDialog />
                         </div>
                     </CardContent>
                 </Card>

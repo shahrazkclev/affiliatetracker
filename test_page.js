@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
     const page = await browser.newPage();
     
     console.log("Navigating to page with ?ref=shahraz...");
-    await page.goto('https://cleverpoly.store/the-lazy-motion-library-test?ref=shahraz', { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto('https://affiliatemango.com/the-lazy-motion-library-test?ref=shahraz', { waitUntil: 'networkidle', timeout: 30000 });
     
     await page.waitForTimeout(2000); // Wait 2 seconds for scripts/observer to settle
     

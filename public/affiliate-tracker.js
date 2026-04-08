@@ -1,5 +1,5 @@
 /**
- * Cleverpoly Affiliate Tracking Snippet
+ * AffiliateMango Affiliate Tracking Snippet
  * ----------------------------------------
  * Drop this snippet on ANY page of your storefront where Stripe buy buttons live.
  * It reads the affiliate referral code from the URL (?ref=CODE), stores it in
@@ -22,7 +22,7 @@
     timestampKey: 'cpoly_ref_ts',   // localStorage TTL key
     ttlDays: 30,                    // how long to remember the referral
     debug: false,                   // set true to see console logs
-    trackClickUrl: 'https://partners.cleverpoly.store/api/track-click',
+    trackClickUrl: 'https://affiliatemango.com/api/track-click',
     trackClickEnabled: true,        // log server-side click metrics automatically
   };
 

@@ -12,7 +12,7 @@ export default async function PortalHome() {
     // Find affiliate record for this user
     const { data: affiliate } = await supabase
         .from('affiliates')
-        .select('*, campaign:campaigns(name, landing_url)')
+        .select('*, campaign:campaigns(name, landing_url), org:organizations(custom_domain)')
         .eq('email', user?.email ?? '')
         .maybeSingle();
 
@@ -58,9 +58,12 @@ export default async function PortalHome() {
 
     const refCode = affiliate?.referral_code || '';
     const campaignLandingUrl = (affiliate?.campaign as any)?.landing_url || null;
+    const orgDomain = (affiliate?.org as any)?.custom_domain;
     const baseUrl = campaignLandingUrl
         ? `${campaignLandingUrl}${campaignLandingUrl.includes('?') ? '&' : '?'}via=${refCode}`
-        : `https://cleverpoly.store/pricing?via=${refCode}`;
+        : orgDomain 
+            ? `https://${orgDomain}?via=${refCode}`
+            : `https://affiliatemango.com/pricing?via=${refCode}`;
 
     return (
         <div className="space-y-6 max-w-[1400px] mx-auto font-sans">

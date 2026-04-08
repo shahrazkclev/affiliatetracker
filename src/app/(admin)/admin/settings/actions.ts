@@ -3,10 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
-const API_KEY = "pk_7fgiE9xvZRZiQusxvYujJM";
-const BASE_URL = "https://www.promotekit.com/api/v1";
-
-async function fetchAll(endpoint: string, params: Record<string, string> = {}) {
+async function fetchAll(endpoint: string, apiKey: string, baseUrl: string, params: Record<string, string> = {}) {
     let allData: any[] = [];
     let page = 1;
     let hasMore = true;
@@ -14,8 +11,8 @@ async function fetchAll(endpoint: string, params: Record<string, string> = {}) {
     while (hasMore) {
         try {
             const qs = new URLSearchParams({ ...params, page: String(page), limit: '100' }).toString();
-            const res = await fetch(`${BASE_URL}${endpoint}?${qs}`, {
-                headers: { "Authorization": `Bearer ${API_KEY}` },
+            const res = await fetch(`${baseUrl}${endpoint}?${qs}`, {
+                headers: { "Authorization": `Bearer ${apiKey}` },
                 cache: 'no-store'
             });
             const json = await res.json();
@@ -36,31 +33,34 @@ async function batchUpsert(supabase: any, table: string, rows: any[]) {
     return { count: error ? 0 : rows.length, error };
 }
 
-export async function syncPromoteKitData() {
+export async function syncCompetitorData(platform: string, apiKey: string) {
     try {
         const supabase = await createClient();
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return { success: false, error: "Not authenticated" };
 
-        // Get the org — single-tenant setup
-        const { data: org } = await supabase
-            .from('organizations')
-            .select('id')
-            .limit(1)
-            .single();
+        const { data: org } = await supabase.from('organizations').select('id').limit(1).single();
         const orgId = org?.id;
         if (!orgId) return { success: false, error: "No organization found." };
 
-        console.log("[sync] Starting PromoteKit sync for org:", orgId);
+        console.log(`[sync] Starting migration for org: ${orgId} from platform: ${platform}`);
 
-        // ── Fetch everything in parallel ──────────────────────────────────────
+        if (platform === "tolt" || platform === "rewardful") {
+            return { success: false, error: `${platform.toUpperCase()} API integration is listed as coming soon. Check back later!` };
+        }
+
+        if (platform !== "promotekit") {
+            return { success: false, error: "Unsupported platform." };
+        }
+
+        const baseUrl = "https://www.promotekit.com/api/v1";
         const [campaigns, affiliates, commissions, referrals, payouts] = await Promise.all([
-            fetchAll("/campaigns"),
-            fetchAll("/affiliates"),
-            fetchAll("/commissions"),
-            fetchAll("/referrals"),
-            fetchAll("/payouts"),
+            fetchAll("/campaigns", apiKey, baseUrl),
+            fetchAll("/affiliates", apiKey, baseUrl),
+            fetchAll("/commissions", apiKey, baseUrl),
+            fetchAll("/referrals", apiKey, baseUrl),
+            fetchAll("/payouts", apiKey, baseUrl),
         ]);
 
         console.log(`[sync] Fetched: ${campaigns.length} campaigns, ${affiliates.length} affiliates, ${commissions.length} commissions, ${referrals.length} referrals, ${payouts.length} payouts`);

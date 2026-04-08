@@ -8,11 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonitorPlay, Globe, Palette, Upload, CheckCircle2, Copy, RefreshCw, ImagePlus, X, Save, Mail, PanelLeft, Smartphone, FileText } from "lucide-react";
 
 import { uploadLogoAndSave, getPortalConfig, saveBrandingSettings } from "./actions";
+import { CustomDomainCard } from "./CustomDomainCard";
 import Image from "next/image";
 
 export default function PortalConfigPage() {
     const [domain, setDomain] = useState("");
-    const defaultDomain = "partners.cleverpoly.store";
+    const defaultDomain = "affiliatemango.com";
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
@@ -30,6 +31,7 @@ export default function PortalConfigPage() {
 
     useEffect(() => {
         getPortalConfig().then((config) => {
+            if (config?.custom_domain) setDomain(config.custom_domain);
             if (config?.logo_url) setLogoUrl(config.logo_url);
             if (config?.primary_color) setPrimaryColor(config.primary_color);
             if (config?.theme) setTheme(config.theme);
@@ -78,7 +80,7 @@ export default function PortalConfigPage() {
     const activeLogo = previewUrl || logoUrl;
 
     return (
-        <div className="space-y-6 max-w-5xl font-sans">
+        <div className="p-2 sm:p-6 space-y-6 w-full max-w-full max-auto font-sans">
             <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
                     <MonitorPlay className="w-5 h-5 text-amber-500" />
@@ -92,52 +94,8 @@ export default function PortalConfigPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-6">
 
-                    {/* Domain Settings */}
-                    <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl overflow-hidden">
-                        <div className="h-1 w-full bg-gradient-to-r from-amber-500 to-amber-600" />
-                        <CardHeader className="border-b border-zinc-800/50 bg-zinc-950/30">
-                            <CardTitle className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
-                                <Globe className="w-4 h-4 text-amber-500" /> Custom Domain
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-6 space-y-6">
-                            <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg">
-                                <Label className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 block">Current Gateway</Label>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-amber-500 font-mono text-sm">https://{domain || defaultDomain}</span>
-                                    <Button variant="ghost" size="sm" className="h-8 text-zinc-400 hover:text-amber-500" onClick={() => navigator.clipboard.writeText(`https://${domain || defaultDomain}`)}>
-                                        <Copy className="w-3.5 h-3.5 mr-2" /> Copy
-                                    </Button>
-                                </div>
-                            </div>
-                            <div className="space-y-3">
-                                <Label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Connect Custom Domain</Label>
-                                <div className="flex gap-2">
-                                    <Input placeholder="partners.yourbrand.com" value={domain} onChange={(e) => setDomain(e.target.value)}
-                                        className="bg-zinc-950 border-zinc-800 text-zinc-200 focus-visible:ring-amber-500 font-mono" />
-                                    <Button className="bg-amber-600 hover:bg-amber-500 text-zinc-950 font-semibold">Verify DNS</Button>
-                                </div>
-                                <div className="mt-4 bg-zinc-950 border border-zinc-800 rounded-lg p-4 space-y-3">
-                                    <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">DNS Configuration</h4>
-                                    <p className="text-[11px] text-zinc-500 font-mono">Add the following CNAME record. It may take up to 24h to propagate.</p>
-                                    <div className="bg-zinc-900 border border-zinc-800 rounded-md overflow-hidden">
-                                        <table className="w-full text-left text-[11px] font-mono">
-                                            <thead className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400 uppercase tracking-wider">
-                                                <tr><th className="px-3 py-2">Type</th><th className="px-3 py-2">Name</th><th className="px-3 py-2">Value / Target</th></tr>
-                                            </thead>
-                                            <tbody className="text-zinc-300">
-                                                <tr>
-                                                    <td className="px-3 py-2 text-amber-500 font-bold">CNAME</td>
-                                                    <td className="px-3 py-2">{domain ? domain.split('.')[0] : 'partners'}</td>
-                                                    <td className="px-3 py-2 font-bold">cname.cleverpoly.store</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {/* Domain Settings UI Injection */}
+                    <CustomDomainCard currentDomain={domain || null} />
 
                     {/* Branding & Logo */}
                     <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl overflow-hidden">
@@ -290,7 +248,7 @@ export default function PortalConfigPage() {
                 </div>
 
                 {/* Right Column */}
-                <div className="space-y-6">
+                <div className="space-y-6 w-full font-sans">
                     <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl overflow-hidden">
                         <CardHeader className="flex flex-row items-center justify-between pb-4">
                             <CardTitle className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Status</CardTitle>

@@ -12,14 +12,13 @@ import {
 import { addAffiliateDirectly } from './actions';
 import { listStripeCoupons, createStripePromoCode, createStripeCoupon } from '@/app/(admin)/admin/settings/stripe-actions';
 
-const PORTAL_URL = 'https://partners.cleverpoly.store';
 
 // Module-level coupon cache shared with edit dialog
 let globalCouponsCache: { id: string; name: string; percent_off: number | null; amount_off: number | null }[] | null = null;
 
 interface Campaign { id: string; name: string; }
 
-export function AddAffiliateDialog({ campaigns }: { campaigns: Campaign[] }) {
+export function AddAffiliateDialog({ campaigns, portalUrl }: { campaigns: Campaign[], portalUrl: string }) {
     const [tab, setTab] = useState<'add' | 'invite'>('add');
     const [open, setOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -156,7 +155,7 @@ export function AddAffiliateDialog({ campaigns }: { campaigns: Campaign[] }) {
     }
 
     async function handleCopy() {
-        await navigator.clipboard.writeText(PORTAL_URL);
+        await navigator.clipboard.writeText(portalUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     }
@@ -401,7 +400,7 @@ export function AddAffiliateDialog({ campaigns }: { campaigns: Campaign[] }) {
                                 Share the sign-up link with anyone you'd like to invite. They'll apply and you can approve them.
                             </p>
                             <div className="flex items-center gap-2">
-                                <Input value={PORTAL_URL} readOnly className="bg-zinc-900 border-zinc-700 text-zinc-300 font-mono text-sm focus-visible:ring-orange-500/50" />
+                                <Input value={portalUrl} readOnly className="bg-zinc-900 border-zinc-700 text-zinc-300 font-mono text-sm focus-visible:ring-orange-500/50" />
                                 <Button type="button" onClick={handleCopy} className="shrink-0 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-200 px-3 h-10">
                                     {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                                 </Button>

@@ -137,8 +137,8 @@ serve(async (req) => {
             htmlContent = ACCOUNT_REVISION_TEMPLATE(affiliateName, orgLogoUrl, orgLogoEmailHeight);
 
         } else if (eventType === 'test_email') {
-            subject = 'Test email from Cleverpoly ✔';
-            htmlContent = `<p style="font-family:sans-serif;color:#333;">Hello! This is a test email from Cleverpoly Affiliates.</p>`;
+            subject = 'Test email from Partner Program ✔';
+            htmlContent = `<p style="font-family:sans-serif;color:#333;">Hello! This is a test email from Partner Program Affiliates.</p>`;
         }
 
         // Send via Make webhook

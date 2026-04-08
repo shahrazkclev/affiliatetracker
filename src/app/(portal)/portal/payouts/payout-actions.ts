@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { dispatchEmail } from "@/lib/email";
 
 export async function requestPayout(affiliateId: string, amount: number) {
     const supabase = await createClient();
@@ -44,26 +45,21 @@ export async function requestPayout(affiliateId: string, amount: number) {
     // Send notification email if we have an address
     if (adminEmail) {
         try {
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-            const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-            await fetch(`${supabaseUrl}/functions/v1/send-email-notification`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${serviceKey}`,
-                },
-                body: JSON.stringify({
-                    type: 'INSERT',
-                    table: 'payout_requests',
-                    record: {
-                        affiliate_name: affiliate.name,
-                        affiliate_email: affiliate.email,
-                        amount,
-                        admin_email: adminEmail,
-                        _payout_notification: true,
-                    },
-                }),
+            await dispatchEmail(affiliate.org_id, {
+                to: adminEmail,
+                subject: `New Payout Request: $${amount}`,
+                html: `
+                    <h2 style="color: #333333; margin-top: 0; text-align: center;">Payout Request Submitted</h2>
+                    <p style="color: #555555; text-align: center; margin-bottom: 20px;">
+                        <strong>${affiliate.name}</strong> (${affiliate.email}) has requested a payout withdrawal.
+                    </p>
+                    <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; text-align: center; margin-bottom: 20px;">
+                        <span style="font-size: 24px; font-weight: bold; color: #10b981;">$${amount.toFixed(2)}</span>
+                    </div>
+                    <p style="color: #555555; text-align: center; font-size: 14px;">
+                        Log in to your Admin Dashboard to review and process this payout.
+                    </p>
+                `
             });
         } catch (emailErr) {
             console.error('[requestPayout] Email notification failed:', emailErr);

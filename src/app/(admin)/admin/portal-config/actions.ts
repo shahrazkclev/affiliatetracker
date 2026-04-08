@@ -7,7 +7,7 @@ export async function getPortalConfig() {
     const supabase = await createClient();
     const { data } = await supabase
         .from('organizations')
-        .select('id, name, logo_url, primary_color, theme, logo_sidebar_height, logo_email_height')
+        .select('id, name, logo_url, custom_domain, primary_color, theme, logo_sidebar_height, logo_email_height')
         .limit(1)
         .single();
     return data;

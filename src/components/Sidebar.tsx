@@ -54,7 +54,7 @@ export function Sidebar() {
             alt="AffiliateMango Logo"
             width={80}
             height={80}
-            className="w-16 h-16 object-contain scale-[1.5] -my-6 -ml-3 -mr-2"
+            className="w-12 h-12 object-contain -ml-2 mr-1"
           />
           <div className="flex flex-col justify-center">
             <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2 group cursor-pointer transition-all duration-300">

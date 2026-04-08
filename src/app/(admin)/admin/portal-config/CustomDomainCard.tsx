@@ -61,7 +61,7 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
                          <div className="flex items-center gap-2 mt-1 bg-black/40 px-3 py-1.5 rounded border border-zinc-800">
                              <span className="text-[10px] text-zinc-400 font-mono">CNAME</span>
                              <ChevronRight className="w-3 h-3 text-zinc-600" />
-                             <span className="text-xs text-purple-400 font-mono select-all">partners.affiliatemango.com</span>
+                             <span className="text-xs text-purple-400 font-mono select-all">portal.affiliatemango.com</span>
                          </div>
                     </div>
 

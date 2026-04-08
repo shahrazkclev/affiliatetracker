@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
@@ -31,7 +32,9 @@ export async function GET(request: Request) {
 
             if (!affiliate) {
                 // New user — send to fill in application details
-                return NextResponse.redirect(`${origin}/apply/details`);
+                // Make sure to preserve query parameters from `next` if it contains them
+                const target = next.startsWith('/apply/details') ? next : '/apply/details';
+                return NextResponse.redirect(`${origin}${target}`);
             }
 
             // Check if they have a password set (first login after approval)

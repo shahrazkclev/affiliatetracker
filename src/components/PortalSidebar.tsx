@@ -21,7 +21,7 @@ async function getOrgBranding() {
 export async function PortalSidebar() {
     const org = await getOrgBranding();
     const logoUrl = org?.logo_url ?? null;
-    const logoHeight = Math.min(Math.max(org?.logo_sidebar_height ?? 36, 20), 80);
+    const logoHeight = Math.min(Math.max(org?.logo_sidebar_height ?? 36, 20), 48);
 
     return (
         <aside className="w-64 h-screen sticky top-0 bg-zinc-950 text-zinc-400 flex flex-col border-r border-zinc-800 shadow-2xl z-10">

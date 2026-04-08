@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { dispatchEmail } from '@/lib/email';
 
 // Update affiliate details — all editable fields
 export async function updateAffiliate(id: string, formData: FormData) {
@@ -139,12 +140,44 @@ export async function deleteCommission(id: string) {
 export async function approvePendingAffiliate(id: string) {
     const supabase = await createClient();
 
+    // Fetch the affiliate to get their email and org_id
+    const { data: affiliate } = await supabase
+        .from('affiliates')
+        .select('name, email, org_id, notify_account_approved')
+        .eq('id', id)
+        .single();
+
     const { error } = await supabase
         .from('affiliates')
         .update({ status: 'active' })
         .eq('id', id);
 
     if (error) return { success: false, error: error.message };
+
+    // Fire Approval Email securely over the tenant's exact configuration
+    if (affiliate && affiliate.notify_account_approved !== false && affiliate.email) {
+        // Compute direct login link
+        const { data: org } = await supabase.from('organizations').select('custom_domain').eq('id', affiliate.org_id).single();
+        const rawDomain = org?.custom_domain ? `https://${org.custom_domain}` : (process.env.NEXT_PUBLIC_SITE_URL || 'https://affiliatemango.com');
+        
+        await dispatchEmail(affiliate.org_id, {
+            to: affiliate.email,
+            subject: "Your Partner Application is Approved!",
+            html: `
+                <h2 style="color: #333333; margin-top: 0; text-align: center;">Welcome to the Partner Program!</h2>
+                <p style="color: #555555; font-size: 16px; margin-bottom: 20px; line-height: 1.5; text-align: center;">
+                    Hi ${affiliate.name},<br><br>
+                    Great news! Your partner application has been officially <strong>approved</strong>. We are thrilled to welcome you to the team.
+                </p>
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <a href="${rawDomain}/login" style="background-color: #f97316; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Access Partner Portal</a>
+                </div>
+                <p style="color: #555555; font-size: 14px; text-align: center;">
+                    Log in today to grab your unique tracking link and start viewing your commissions.
+                </p>
+            `,
+        });
+    }
 
     revalidatePath('/admin/affiliates');
     return { success: true };

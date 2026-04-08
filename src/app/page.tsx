@@ -182,7 +182,7 @@ function AffiliateRegistrationPageInner() {
                             {/* Steps */}
                             <ol className="space-y-2 text-sm">
                                 {[
-                                    'Open the email from Cleverpoly',
+                                    'Open the email from AffiliateMango',
                                     'Click the confirmation link',
                                     'Return here and click Continue',
                                 ].map((step, i) => (

@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Code, Terminal } from "lucide-react";
 import { CopyButton } from "@/components/CopyButton";
 
-const trackingSnippetCode = `<!-- Affiliate Tracking Script -->
+export function TrackingSnippetCard({ portalUrl }: { portalUrl: string }) {
+    const trackingSnippetCode = `<!-- Affiliate Tracking Script -->
 <script>
 (function () {
   var CONFIG = {
@@ -14,7 +15,7 @@ const trackingSnippetCode = `<!-- Affiliate Tracking Script -->
     timestampKey: 'cpoly_ref_ts',
     ttlDays: 30,
     debug: false,
-    trackClickUrl: 'https://partners.cleverpoly.store/api/track-click',
+    trackClickUrl: '${portalUrl}/api/track-click',
     trackClickEnabled: true
   };
 
@@ -102,8 +103,6 @@ const trackingSnippetCode = `<!-- Affiliate Tracking Script -->
   }
 })();
 </script>`;
-
-export function TrackingSnippetCard() {
     return (
         <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group">
             <CardHeader className="pb-4 border-b border-zinc-800/50 flex flex-row items-center justify-between">

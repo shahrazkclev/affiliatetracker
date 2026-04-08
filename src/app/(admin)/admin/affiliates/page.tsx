@@ -25,8 +25,9 @@ export default async function AffiliatesPage({
     const searchQuery = (params.q || "").trim();
 
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: org } = await supabase.from('organizations').select('id').eq('owner_id', user?.id || '').single();
+    const { data: org } = await supabase.from('organizations').select('id, custom_domain').eq('owner_id', user?.id || '').single();
     const orgId = org?.id;
+    const portalUrl = org?.custom_domain ? `https://${org.custom_domain}` : (process.env.NEXT_PUBLIC_SITE_URL || "https://affiliatemango.com");
 
     // ── DB-level query ────────────────────────────────────────────────────────
     let query = supabase
@@ -66,7 +67,7 @@ export default async function AffiliatesPage({
         .order("name");
 
     return (
-        <div className="space-y-6 max-w-7xl font-sans">
+        <div className="space-y-6 w-full font-sans">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
@@ -101,12 +102,12 @@ export default async function AffiliatesPage({
                                     <Label htmlFor="link" className="sr-only">Link</Label>
                                     <Input
                                         id="link"
-                                        defaultValue="https://partners.cleverpoly.store"
+                                        defaultValue={portalUrl}
                                         readOnly
                                         className="bg-zinc-900 border-zinc-700 text-zinc-300 focus-visible:ring-orange-500"
                                     />
                                 </div>
-                                <CopyButton text="https://partners.cleverpoly.store" className="bg-orange-600 hover:bg-orange-500 text-black border-none" />
+                                <CopyButton text={portalUrl} className="bg-orange-600 hover:bg-orange-500 text-black border-none" />
                             </div>
                             <DialogFooter className="sm:justify-start">
                                 <p className="text-xs text-zinc-500 font-mono mt-4">
@@ -115,7 +116,7 @@ export default async function AffiliatesPage({
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
-                    <AddAffiliateDialog campaigns={campaigns || []} />
+                    <AddAffiliateDialog campaigns={campaigns || []} portalUrl={portalUrl} />
                 </div>
             </div>
 
@@ -130,10 +131,10 @@ export default async function AffiliatesPage({
                 <CardContent className="pt-6">
                     <div className="flex flex-col sm:flex-row gap-4 items-center max-w-lg">
                         <div className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 flex items-center text-zinc-300 font-mono text-sm w-full shadow-inner ring-1 ring-orange-500/10 focus-within:ring-orange-500/30 transition-all">
-                            <span className="text-zinc-500 mr-2">https://</span>partners.cleverpoly.store
+                            {portalUrl}
                         </div>
                         <CopyButton
-                            text="https://partners.cleverpoly.store"
+                            text={portalUrl}
                             className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 shadow-md transition-all active:scale-95"
                         />
                     </div>
