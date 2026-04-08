@@ -27,6 +27,7 @@ export default function PortalConfigPage() {
     const [domainStatus, setDomainStatus] = useState<string | null>(null);
     const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
     const [refreshClock, setRefreshClock] = useState(0);
+    const [isPro, setIsPro] = useState(false);
 
     const [primaryColor, setPrimaryColor] = useState("#f59e0b");
     const [theme, setTheme] = useState("dark");
@@ -41,6 +42,7 @@ export default function PortalConfigPage() {
             if (config?.theme) setTheme(config.theme);
             if (config?.logo_sidebar_height) setSidebarHeight(config.logo_sidebar_height);
             if (config?.logo_email_height) setEmailHeight(config.logo_email_height);
+            setIsPro(config?.plan_name === 'pro' || config?.is_free_forever);
         });
     }, []);
 
@@ -107,6 +109,7 @@ export default function PortalConfigPage() {
                     <CustomDomainCard 
                         currentDomain={domain || null} 
                         refreshClock={refreshClock}
+                        isPro={isPro}
                         onDomainChange={(d) => setDomain(d || "")} 
                         onStatusChange={setDomainStatus} 
                         onCheckingChange={setIsRefreshingStatus}

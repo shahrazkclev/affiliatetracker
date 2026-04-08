@@ -25,12 +25,15 @@ export async function checkLoginStatus(formData: FormData): Promise<{
     notAffiliate?: boolean;
     error?: string;
 }> {
+    console.log('[checkLoginStatus] Invoked checkLoginStatus');
     const admin = getAdminClient();
     const supabase = await createClient();
     const email = (formData.get('email') as string)?.trim().toLowerCase();
     if (!email) return { error: 'Email is required.' };
 
-    const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const siteHost = (await import('next/headers')).headers().then(h => h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "partners.affiliatemango.com");
+    const isLocal = (await siteHost).includes('localhost');
+    const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
 
     // 1. Check if they have an auth user already via the existing RPC
     const { data: pwCheck } = await admin.rpc('check_user_has_password', { user_email: email });
@@ -45,16 +48,23 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         .limit(1)
         .maybeSingle();
 
-    if (affErr) return { error: 'Could not verify your account. Please try again.' };
+    if (affErr) {
+        console.error('[checkLoginStatus] Affiliate lookup error:', affErr);
+        return { error: 'Could not verify your account. Please try again.' };
+    }
 
     if (!affiliate) {
+        console.log('[checkLoginStatus] Email not found in affiliates table');
         // If they are not an affiliate and they DO NOT exist in auth.users, they are completely unknown.
         if (!userExists) return { notAffiliate: true };
         
         // If they are not an affiliate but DO exist in auth.users, they might be an Organization Owner.
         // Proceed to password step or magic link
+        console.log('[checkLoginStatus] User exists in auth but not in affiliates table -> Organization Owner pass-through');
         return { hasPassword };
     }
+
+    console.log('[checkLoginStatus] Affiliate found, userExists in Auth:', userExists, 'affiliate.user_id:', affiliate.user_id);
 
     // 3. No auth user yet for this affiliate — create one and send setup email
     if (!affiliate.user_id && !userExists) {
@@ -85,11 +95,15 @@ export async function sendMagicLink(formData: FormData): Promise<{ error?: strin
     const supabase = await createClient();
     const email = (formData.get('email') as string)?.trim().toLowerCase();
 
+    const siteHost = (await import('next/headers')).headers().then(h => h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "partners.affiliatemango.com");
+    const isLocal = (await siteHost).includes('localhost');
+    const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
+
     const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
             shouldCreateUser: false,
-            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+            emailRedirectTo: `${SITE_URL}/auth/callback`,
         },
     });
 
@@ -99,13 +113,19 @@ export async function sendMagicLink(formData: FormData): Promise<{ error?: strin
 
 /** Standard password login for returning users */
 export async function loginWithPassword(formData: FormData): Promise<{ error?: string }> {
+    console.log('[loginWithPassword] Attempting standard password login...');
     const supabase = await createClient();
     const admin = getAdminClient();
     const email = (formData.get('email') as string)?.trim().toLowerCase();
     const password = formData.get('password') as string;
 
     const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: 'Incorrect password. Please try again.' };
+    if (error) {
+        console.error('[loginWithPassword] Incorrect password or sign in error:', error.message);
+        return { error: 'Incorrect password. Please try again.' };
+    }
+
+    console.log('[loginWithPassword] Sign in success for user ID:', signInData.user?.id);
 
     // Check if this user owns an organization → send to admin panel
     const userId = signInData.user?.id;
@@ -116,11 +136,13 @@ export async function loginWithPassword(formData: FormData): Promise<{ error?: s
             .eq('owner_id', userId)
             .maybeSingle();
         if (org) {
+            console.log('[loginWithPassword] User is an admin owner of org:', org.id, 'redirecting -> /admin');
             revalidatePath('/', 'layout');
             redirect('/admin');
         }
     }
 
+    console.log('[loginWithPassword] Route user to affiliate portal -> /portal');
     revalidatePath('/', 'layout');
     redirect('/portal');
 }
@@ -153,7 +175,9 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     const email = (formData.get('email') as string)?.trim().toLowerCase();
     if (!email) return { error: 'Email is required.' };
 
-    const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const siteHost = (await import('next/headers')).headers().then(h => h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "partners.affiliatemango.com");
+    const isLocal = (await siteHost).includes('localhost');
+    const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${SITE_URL}/auth/callback?next=/reset-password`,

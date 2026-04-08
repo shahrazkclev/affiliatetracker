@@ -28,9 +28,11 @@ export default async function GlobalSettingsPage() {
     // Fetch org settings including SMTP, Domain and Payout Notification
     const { data: org } = await supabase
         .from('organizations')
-        .select('payout_notification_email, custom_domain, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from_email')
+        .select('payout_notification_email, custom_domain, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from_email, plan_name, is_free_forever')
         .limit(1)
         .single();
+
+    const isPro = org?.plan_name === 'pro' || org?.is_free_forever;
 
     const portalUrl = org?.custom_domain 
         ? `https://${org.custom_domain}` 
@@ -60,7 +62,7 @@ export default async function GlobalSettingsPage() {
                 <PayoutEmailCard currentEmail={org?.payout_notification_email || null} />
 
                 {/* ── Custom SMTP Settings ─────────────────────────────────────── */}
-                <SmtpSettingsCard currentConfig={org || {}} />
+                <SmtpSettingsCard currentConfig={org || {}} isPro={isPro} />
 
 
                 <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group">

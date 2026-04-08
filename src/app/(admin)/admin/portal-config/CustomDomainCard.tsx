@@ -6,19 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Globe, Loader2, CircleCheck, CircleX, ChevronRight, AlertCircle, Trash2 } from "lucide-react";
+import { Globe, Loader2, CircleCheck, CircleX, ChevronRight, AlertCircle, Trash2, Lock } from "lucide-react";
 import { saveCustomDomain, getCustomDomainStatus, removeCustomDomain, switchSslToTxt } from "./cloudflare-actions";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from 'next/link';
 
 export function CustomDomainCard({ 
     currentDomain,
     refreshClock = 0,
+    isPro,
     onDomainChange,
     onStatusChange,
     onCheckingChange
 }: { 
     currentDomain: string | null;
     refreshClock?: number;
+    isPro?: boolean;
     onDomainChange: (domain: string | null) => void;
     onStatusChange: (status: string | null) => void;
     onCheckingChange?: (isChecking: boolean) => void;
@@ -108,11 +111,32 @@ export function CustomDomainCard({
                 <CardTitle className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
                     <Globe className="w-4 h-4 text-purple-400" /> Affiliate Portal Custom Domain
                 </CardTitle>
-                <CardDescription className="text-zinc-500 text-[11px] font-mono mt-1">
-                    Allow your partners to access their portal via your own branded subdomain.
+                <CardDescription className="text-zinc-500 text-[11px] font-mono mt-1 flex justify-between items-center">
+                    <span>Allow your partners to access their portal via your own branded subdomain.</span>
+                    {!isPro && (
+                        <span className="flex items-center gap-1.5 text-amber-500/80 bg-amber-500/10 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">
+                            <Lock className="w-3 h-3" /> PRO FEATURE
+                        </span>
+                    )}
                 </CardDescription>
             </CardHeader>
-            <CardContent className="pt-5">
+            <CardContent className="pt-5 relative">
+                {!isPro && (
+                    <div className="absolute inset-x-0 bottom-0 top-0 z-20 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-[2px] rounded-b-xl border-t border-zinc-800/50">
+                        <div className="flex flex-col items-center text-center p-6 bg-zinc-900 border border-zinc-800 rounded-xl max-w-[280px] shadow-2xl">
+                            <div className="w-10 h-10 bg-amber-500/10 rounded-full flex items-center justify-center mb-3">
+                                <Lock className="w-5 h-5 text-amber-500" />
+                            </div>
+                            <h3 className="text-sm font-semibold text-white mb-2">Upgrade to Pro</h3>
+                            <p className="text-xs text-zinc-400 mb-4 font-normal">Custom portals are exclusively available on the Pro plan.</p>
+                            <Link href="/admin/billing" className="w-full">
+                                <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold h-9 text-xs transition-colors shadow-[0_0_15px_rgba(245,158,11,0.15)] hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                                    View Billing Options
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                )}
                 {currentDomain ? (
                     <div className="space-y-4">
                         <div className="bg-black/20 border border-zinc-800 p-4 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
