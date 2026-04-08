@@ -39,12 +39,17 @@ export async function sendSignupConfirmation(formData: FormData): Promise<{ erro
         return { existingUser: true };
     }
 
+    const orgIdStr = (formData.get('org_id') as string)?.trim();
+    const emailRedirectTo = orgIdStr 
+        ? `${SITE_URL}/auth/callback?next=/apply/details?org_id=${orgIdStr}`
+        : `${SITE_URL}/auth/callback?next=/apply/details`;
+
     // Send confirmation link — on click it redirects to /auth/callback
     const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
             shouldCreateUser: true,
-            emailRedirectTo: `${SITE_URL}/auth/callback?next=/apply/details`,
+            emailRedirectTo,
         },
     });
 
@@ -62,14 +67,17 @@ export async function submitAffiliateApplication(formData: FormData): Promise<{ 
 
     const name = (formData.get('name') as string)?.trim();
     const referralCode = (formData.get('referralCode') as string)?.trim().toLowerCase().replace(/\s+/g, '');
+    const orgId = (formData.get('org_id') as string)?.trim();
 
     if (!name || !referralCode) return { error: 'All fields are required.' };
+    if (!orgId) return { error: 'Organization context is missing. Please use a valid application link.' };
 
     // Prevent duplicate crash if user is already an affiliate
     const { data: alreadyAffiliate } = await admin
         .from('affiliates')
         .select('id')
         .eq('email', user.email)
+        .eq('org_id', orgId)
         .maybeSingle();
 
     if (alreadyAffiliate) {
@@ -77,10 +85,12 @@ export async function submitAffiliateApplication(formData: FormData): Promise<{ 
         return {};
     }
 
-    // Check referral code uniqueness
+    // Check referral code uniqueness across the specific org or globally?
+    // Referral codes are usually global or per-org. Let's do per-org.
     const { data: taken } = await admin
         .from('affiliates')
         .select('id')
+        .eq('org_id', orgId)
         .eq('referral_code', referralCode)
         .maybeSingle();
 
@@ -89,6 +99,7 @@ export async function submitAffiliateApplication(formData: FormData): Promise<{ 
     const { data: campaign } = await admin
         .from('campaigns')
         .select('id, org_id')
+        .eq('org_id', orgId)
         .eq('is_default', true)
         .maybeSingle();
 

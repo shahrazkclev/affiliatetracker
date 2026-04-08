@@ -12,20 +12,25 @@ export default async function GeneratePayoutsPage({
     searchParams: Promise<{ date?: string }>
 }) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: org } = await supabase.from('organizations').select('id').eq('owner_id', user?.id || '').single();
+    if (!org) return <div className="p-8 text-red-500">Organization not found.</div>;
+    const orgId = org.id;
+
     const params = await searchParams;
 
     const isAllTime = params.date === 'all' || !params.date;
     const targetDate = params.date && params.date !== 'all' ? new Date(params.date) : new Date();
 
     // Fetch affiliates
-    const { data: allAffiliates } = await supabase.from('affiliates').select('*');
+    const { data: allAffiliates } = await supabase.from('affiliates').select('*').eq('org_id', orgId);
 
     // Fetch ALL commissions
-    const { data: commissions, error: comErr } = await supabase.from('commissions').select('affiliate_id, commission_amount, created_at');
+    const { data: commissions, error: comErr } = await supabase.from('commissions').select('affiliate_id, commission_amount, created_at').eq('org_id', orgId);
     if (comErr) console.error("GeneratePayouts Commissions err:", comErr);
 
     // Fetch payouts to calculate settled status dynamically
-    const { data: payouts } = await supabase.from('payouts').select('affiliate_id, created_at');
+    const { data: payouts } = await supabase.from('payouts').select('affiliate_id, created_at').eq('org_id', orgId);
 
     const payoutMap: Record<string, Date[]> = {};
     for (const p of payouts || []) {
@@ -60,14 +65,15 @@ export default async function GeneratePayoutsPage({
     // Fetch pending payout requests from affiliates
     const { data: payoutRequests } = await supabase
         .from('payout_requests')
-        .select('id, amount, created_at, status, affiliate:affiliates(name, email, payout_threshold, total_commission)')
+        .select('id, amount, created_at, status, affiliate_id, affiliate:affiliates(name, email, payout_threshold, total_commission)')
         .eq('status', 'pending')
+        .in('affiliate_id', (allAffiliates || []).map(a => a.id))
         .order('created_at', { ascending: false });
 
 
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto font-sans">
+        <div className="space-y-6 max-w-7xl font-sans">
             <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
                     <Zap className="w-5 h-5 text-amber-400" />

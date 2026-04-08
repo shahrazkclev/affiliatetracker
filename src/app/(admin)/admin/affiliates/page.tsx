@@ -24,10 +24,15 @@ export default async function AffiliatesPage({
     const currentPage = Math.max(1, parseInt(params.page || "1", 10));
     const searchQuery = (params.q || "").trim();
 
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: org } = await supabase.from('organizations').select('id').eq('owner_id', user?.id || '').single();
+    const orgId = org?.id;
+
     // ── DB-level query ────────────────────────────────────────────────────────
     let query = supabase
         .from("affiliates")
         .select(`*, campaign:campaigns(name)`, { count: "exact" })
+        .eq("org_id", orgId)
         .eq("status", activeStatus)
         .order("created_at", { ascending: false });
 
@@ -42,9 +47,9 @@ export default async function AffiliatesPage({
 
     // Counts per status for tab badges — 3 parallel count queries, accurate regardless of nulls
     const [{ count: activeCount }, { count: pendingCount }, { count: bannedCount }] = await Promise.all([
-        supabase.from("affiliates").select("*", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("affiliates").select("*", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("affiliates").select("*", { count: "exact", head: true }).eq("status", "banned"),
+        supabase.from("affiliates").select("*", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "active"),
+        supabase.from("affiliates").select("*", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "pending"),
+        supabase.from("affiliates").select("*", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "banned"),
     ]);
     const counts = {
         active: activeCount ?? 0,
@@ -57,10 +62,11 @@ export default async function AffiliatesPage({
     const { data: campaigns } = await supabase
         .from("campaigns")
         .select("id, name")
+        .eq("org_id", orgId)
         .order("name");
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto font-sans">
+        <div className="space-y-6 max-w-7xl font-sans">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">

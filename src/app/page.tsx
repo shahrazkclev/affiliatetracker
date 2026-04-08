@@ -123,6 +123,7 @@ function AffiliateRegistrationPageInner() {
 
                     {step === 'email' && (
                         <form onSubmit={handleSend} className="space-y-4">
+                            <input type="hidden" name="org_id" value={searchParams.get('org_id') || ''} />
                             <div className="space-y-2">
                                 <Label htmlFor="email" className="text-zinc-300 text-sm">Email Address</Label>
                                 <Input id="email" name="email" type="email" placeholder="you@example.com"
@@ -205,6 +206,7 @@ function AffiliateRegistrationPageInner() {
                             {/* Resend */}
                             <form onSubmit={handleSend}>
                                 <input type="hidden" name="email" value={email} />
+                                <input type="hidden" name="org_id" value={searchParams.get('org_id') || ''} />
                                 <button type="submit" disabled={isSending}
                                     className="w-full flex items-center justify-center gap-1.5 text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-1">
                                     <RefreshCw className="w-3 h-3" />

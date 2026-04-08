@@ -43,11 +43,7 @@ export async function updateSession(request: NextRequest) {
 
     // If trying to access admin, check they are an org owner and the specific admin email
     if (user && isAdminRoute) {
-        if (user.email !== 'cgdora4@gmail.com') {
-            const url = request.nextUrl.clone()
-            url.pathname = '/portal'
-            return NextResponse.redirect(url)
-        }
+
 
         const { data: org } = await supabase
             .from('organizations')

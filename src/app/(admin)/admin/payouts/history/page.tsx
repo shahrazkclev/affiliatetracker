@@ -17,6 +17,11 @@ export default async function PayoutHistoryPage({
     searchParams: Promise<{ page?: string; q?: string }>;
 }) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: org } = await supabase.from('organizations').select('id').eq('owner_id', user?.id || '').single();
+    if (!org) return <div className="p-8 text-red-500">Organization not found.</div>;
+    const orgId = org.id;
+
     const params = await searchParams;
     const currentPage = Math.max(1, parseInt(params.page || "1", 10));
     const searchQuery = (params.q || "").trim();
@@ -27,6 +32,7 @@ export default async function PayoutHistoryPage({
         const { data: matched } = await supabase
             .from("affiliates")
             .select("id")
+            .eq("org_id", orgId)
             .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
         affiliateIdFilter = (matched || []).map((a) => a.id);
     }
@@ -34,6 +40,7 @@ export default async function PayoutHistoryPage({
     let query = supabase
         .from("payouts")
         .select("id, amount, currency, notes, created_at, period, affiliate_id", { count: "exact" })
+        .eq("org_id", orgId)
         .order("created_at", { ascending: false });
 
     if (searchQuery) {
@@ -48,19 +55,20 @@ export default async function PayoutHistoryPage({
     const { data: payouts, count: totalFiltered } = await query.range(start, start + PAGE_SIZE - 1);
 
     // Summary totals always from unfiltered table
-    const { data: allPayouts } = await supabase.from("payouts").select("amount");
+    const { data: allPayouts } = await supabase.from("payouts").select("amount").eq("org_id", orgId);
     const totalPaid = allPayouts?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
     const payoutCount = allPayouts?.length || 0;
 
     // Affiliate lookup map
     const { data: affiliates } = await supabase
         .from("affiliates")
-        .select("id, name, email, payout_email");
+        .select("id, name, email, payout_email")
+        .eq("org_id", orgId);
     const affiliateMap: Record<string, { name: string; email: string; payout_email: string }> = {};
     for (const a of affiliates || []) affiliateMap[a.id] = a;
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto font-sans">
+        <div className="space-y-6 max-w-7xl font-sans">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">

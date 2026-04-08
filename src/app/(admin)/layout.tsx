@@ -10,12 +10,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Settings } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/utils/supabase/server";
 
-export default function AdminLayout({
+export default async function AdminLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     return (
         <div
             className="dark bg-zinc-950 text-zinc-200 h-screen overflow-hidden flex relative"
@@ -49,7 +53,7 @@ export default function AdminLayout({
                                 <div className="flex flex-col space-y-1">
                                     <p className="text-sm font-medium leading-none">My Account</p>
                                     <p className="text-xs leading-none text-zinc-400 font-normal">
-                                        cgdora4@gmail.com
+                                        {user?.email || "Admin"}
                                     </p>
                                 </div>
                             </DropdownMenuLabel>

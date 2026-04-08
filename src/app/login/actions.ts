@@ -32,21 +32,12 @@ export async function checkLoginStatus(formData: FormData): Promise<{
 
     const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-    // 0. Admin bypass — if this email is an organization owner, skip affiliate check
-    if (email === 'cgdora4@gmail.com') {
-        const { data: authUser } = await admin.auth.admin.listUsers();
-        const matchedUser = (authUser?.users || []).find(u => u.email?.toLowerCase() === email);
-        if (matchedUser) {
-            const { data: org } = await admin
-                .from('organizations')
-                .select('id')
-                .eq('owner_id', matchedUser.id)
-                .maybeSingle();
-            if (org) return { hasPassword: true };
-        }
-    }
+    // 1. Check if they have an auth user already via the existing RPC
+    const { data: pwCheck } = await admin.rpc('check_user_has_password', { user_email: email });
+    const userExists = pwCheck && pwCheck.length > 0;
+    const hasPassword = pwCheck?.[0]?.has_password ?? false;
 
-    // 1. Check affiliates table
+    // 2. Check if they are an affiliate
     const { data: affiliate, error: affErr } = await admin
         .from('affiliates')
         .select('id, user_id')
@@ -54,10 +45,18 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         .maybeSingle();
 
     if (affErr) return { error: 'Could not verify your account. Please try again.' };
-    if (!affiliate) return { notAffiliate: true };
 
-    // 2. No auth user yet — create one and send password setup email
-    if (!affiliate.user_id) {
+    if (!affiliate) {
+        // If they are not an affiliate and they DO NOT exist in auth.users, they are completely unknown.
+        if (!userExists) return { notAffiliate: true };
+        
+        // If they are not an affiliate but DO exist in auth.users, they might be an Organization Owner.
+        // Proceed to password step or magic link
+        return { hasPassword };
+    }
+
+    // 3. No auth user yet for this affiliate — create one and send setup email
+    if (!affiliate.user_id && !userExists) {
         const { data: created, error: createErr } = await admin.auth.admin.createUser({
             email,
             email_confirm: true,
@@ -67,7 +66,7 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         // Link to affiliate row
         await admin.from('affiliates').update({ user_id: created.user.id }).eq('id', affiliate.id);
 
-        // Send password reset/setup email
+        // Send password setup email
         await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: `${SITE_URL}/auth/callback?next=/reset-password`,
         });
@@ -75,9 +74,7 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         return { setupEmailSent: true };
     }
 
-    // 3. Auth user exists — check if they have a password
-    const { data: pwCheck } = await admin.rpc('check_user_has_password', { user_email: email });
-    const hasPassword = pwCheck?.[0]?.has_password ?? false;
+    // 4. Affiliate exists and Auth user exists
     return { hasPassword };
 }
 
@@ -112,16 +109,14 @@ export async function loginWithPassword(formData: FormData): Promise<{ error?: s
     // Check if this user owns an organization → send to admin panel
     const userId = signInData.user?.id;
     if (userId) {
-        if (email === 'cgdora4@gmail.com') {
-            const { data: org } = await admin
-                .from('organizations')
-                .select('id')
-                .eq('owner_id', userId)
-                .maybeSingle();
-            if (org) {
-                revalidatePath('/', 'layout');
-                redirect('/admin');
-            }
+        const { data: org } = await admin
+            .from('organizations')
+            .select('id')
+            .eq('owner_id', userId)
+            .maybeSingle();
+        if (org) {
+            revalidatePath('/', 'layout');
+            redirect('/admin');
         }
     }
 

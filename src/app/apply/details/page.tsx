@@ -1,6 +1,6 @@
 'use client';
-
-import { useState, useTransition } from 'react';
+import { useState, useTransition, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { submitAffiliateApplication } from "@/app/actions";
 import { AlertCircle, Loader2 } from 'lucide-react';
 
-export default function ApplyDetailsPage() {
+function ApplyDetailsPageInner() {
+    const searchParams = useSearchParams();
     const [error, setError] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
 
@@ -69,9 +70,18 @@ export default function ApplyDetailsPage() {
                                 : 'Submit Application'}
                         </Button>
                         <p className="text-[11px] text-zinc-600 text-center">Your application will be reviewed before activation</p>
+                        <input type="hidden" name="org_id" value={searchParams.get('org_id') || ''} />
                     </form>
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function ApplyDetailsPage() {
+    return (
+        <Suspense>
+            <ApplyDetailsPageInner />
+        </Suspense>
     );
 }

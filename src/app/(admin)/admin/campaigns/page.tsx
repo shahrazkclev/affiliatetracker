@@ -17,7 +17,7 @@ export default async function CampaignsPage() {
 
     // Campaign list view
     return (
-        <div className="space-y-4 max-w-7xl mx-auto font-sans">
+        <div className="space-y-4 max-w-7xl font-sans">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">

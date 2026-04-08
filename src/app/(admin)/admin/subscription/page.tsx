@@ -14,7 +14,7 @@ export default function SubscriptionPage() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto space-y-12 pb-12">
+        <div className="max-w-5xl space-y-12 pb-12">
             {/* Header section with Mango Motif */}
             <div className="relative overflow-hidden rounded-3xl border border-zinc-800/50 bg-zinc-950 p-8 shadow-2xl">
                 <div className="absolute -top-32 -right-32 w-96 h-96 bg-amber-500/10 rounded-full blur-[100px] pointer-events-none" />

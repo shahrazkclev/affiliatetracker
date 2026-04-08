@@ -8,6 +8,8 @@ import { SyncButton } from "./SyncButton";
 import { StripeConnectCard } from "./StripeConnectCard";
 import { TrackingSnippetCard } from "./TrackingSnippetCard";
 import { PayoutEmailCard } from "./PayoutEmailCard";
+import { SmtpSettingsCard } from "./SmtpSettingsCard";
+import { CustomDomainCard } from "./CustomDomainCard";
 import { createClient } from "@/utils/supabase/server";
 
 export default async function GlobalSettingsPage() {
@@ -24,15 +26,15 @@ export default async function GlobalSettingsPage() {
 
     const lastSyncedAt = latestSync?.last_synced_at || null;
 
-    // Fetch org payout notification email
+    // Fetch org settings including SMTP, Domain and Payout Notification
     const { data: org } = await supabase
         .from('organizations')
-        .select('payout_notification_email')
+        .select('payout_notification_email, custom_domain, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from_email')
         .limit(1)
         .single();
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto font-sans">
+        <div className="space-y-6 max-w-4xl font-sans">
             <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
                     <SettingsIcon className="w-5 h-5 text-orange-400" />
@@ -53,6 +55,12 @@ export default async function GlobalSettingsPage() {
 
                 {/* ── Payout Notification Email ─────────────────────────────────── */}
                 <PayoutEmailCard currentEmail={org?.payout_notification_email || null} />
+
+                {/* ── Custom SMTP Settings ─────────────────────────────────────── */}
+                <SmtpSettingsCard currentConfig={org || {}} />
+
+                {/* ── Tenant Custom Domain ─────────────────────────────────────── */}
+                <CustomDomainCard currentDomain={org?.custom_domain || null} />
 
                 <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group">
                     <CardHeader className="pb-4 border-b border-zinc-800/50">

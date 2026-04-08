@@ -16,6 +16,11 @@ export default async function ReferredUsersPage({
     searchParams: Promise<{ page?: string; q?: string }>;
 }) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: org } = await supabase.from('organizations').select('id').eq('owner_id', user?.id || '').single();
+    if (!org) return <div className="p-8 text-red-500">Organization not found.</div>;
+    const orgId = org.id;
+
     const params = await searchParams;
     const currentPage = Math.max(1, parseInt(params.page || '1', 10));
     const searchQuery = (params.q || '').trim();
@@ -23,12 +28,14 @@ export default async function ReferredUsersPage({
     // Summary counts — always unfiltered
     const { count: totalReferrals } = await supabase
         .from('referrals')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .eq('org_id', orgId);
 
     const { count: activeReferrals } = await supabase
         .from('referrals')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('org_id', orgId);
 
     // Server-side search: if query, find matching affiliate IDs first
     let affiliateIds: string[] | null = null;
@@ -36,6 +43,7 @@ export default async function ReferredUsersPage({
         const { data: matchingAffiliates } = await supabase
             .from('affiliates')
             .select('id')
+            .eq('org_id', orgId)
             .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
         affiliateIds = matchingAffiliates?.map((a) => a.id) ?? [];
     }
@@ -44,6 +52,7 @@ export default async function ReferredUsersPage({
     let query = supabase
         .from('referrals')
         .select(`*, affiliate:affiliates(*)`, { count: 'exact' })
+        .eq('org_id', orgId)
         .order('created_at', { ascending: false });
 
     if (searchQuery) {
@@ -62,12 +71,13 @@ export default async function ReferredUsersPage({
 
     const { data: referrals, error, count: filteredCount } = await query;
 
-    const { data: campaigns } = await supabase.from('campaigns').select('*');
+    const { data: campaigns } = await supabase.from('campaigns').select('*').eq('org_id', orgId);
 
     // Fetch commissions for revenue/commission matching
     const { data: commissions } = await supabase
         .from('commissions')
-        .select('id, affiliate_id, referral_id, customer_email, revenue, commission_amount, amount');
+        .select('id, affiliate_id, referral_id, customer_email, revenue, commission_amount, amount')
+        .eq('org_id', orgId);
 
     // Build lookup maps
     const byReferralId: Record<string, { revenue: number; commission: number }> = {};
@@ -102,7 +112,7 @@ export default async function ReferredUsersPage({
     const displayTotal = searchQuery ? (filteredCount ?? 0) : (totalReferrals ?? 0);
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto font-sans">
+        <div className="space-y-6 max-w-7xl font-sans">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">

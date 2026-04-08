@@ -15,23 +15,30 @@ export default async function CommissionsPage({
     searchParams: Promise<{ status?: string; page?: string; q?: string }>
 }) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: org } = await supabase.from('organizations').select('id').eq('owner_id', user?.id || '').single();
+    if (!org) return <div className="p-8 text-red-500">Organization not found.</div>;
+    const orgId = org.id;
+
     const params = await searchParams;
     const activeFilter = params.status || 'all';
     const currentPage = Math.max(1, parseInt(params.page || '1', 10));
     const searchQuery = (params.q || '').trim();
 
-    const { data: affiliatesList } = await supabase.from('affiliates').select('id, name, email').order('name');
+    const { data: affiliatesList } = await supabase.from('affiliates').select('id, name, email').eq('org_id', orgId).order('name');
 
     // ── Fetch ALL commissions to calculate global accurate stats ─────────────────────────────
     const { data: allCommissions } = await supabase
         .from('commissions')
         .select(`*, affiliate:affiliates(name, email, campaign:campaigns(name))`)
+        .eq('org_id', orgId)
         .order('created_at', { ascending: false });
 
     // ── Payout enrichment (for effectiveStatus) ──────────────────────────────
     const { data: payouts } = await supabase
         .from('payouts')
         .select('affiliate_id, created_at')
+        .in('affiliate_id', (affiliatesList || []).map(a => a.id))
         .order('created_at', { ascending: true });
 
     const payoutMap: Record<string, Date[]> = {};
@@ -94,7 +101,7 @@ export default async function CommissionsPage({
     );
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto font-sans">
+        <div className="space-y-6 max-w-7xl font-sans">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">

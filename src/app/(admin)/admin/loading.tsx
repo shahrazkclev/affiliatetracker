@@ -1,6 +1,6 @@
 export default function AdminLoading() {
     return (
-        <div className="space-y-6 max-w-7xl mx-auto font-sans animate-pulse">
+        <div className="space-y-6 max-w-7xl font-sans animate-pulse">
             {/* Header skeleton */}
             <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-zinc-800" />

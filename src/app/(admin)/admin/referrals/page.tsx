@@ -19,6 +19,11 @@ export default async function ReferralsPage({
     searchParams: Promise<{ page?: string; q?: string; status?: string }>;
 }) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: org } = await supabase.from('organizations').select('id').eq('owner_id', user?.id || '').single();
+    if (!org) return <div className="p-8 text-red-500">Organization not found.</div>;
+    const orgId = org.id;
+
     const params = await searchParams;
     const currentPage = Math.max(1, parseInt(params.page || "1", 10));
     const searchQuery = (params.q || "").trim();
@@ -26,9 +31,9 @@ export default async function ReferralsPage({
 
     // Summary counts — always global
     const [{ count: totalCount }, { count: paidCount }, { count: pendingCount }] = await Promise.all([
-        supabase.from("referrals").select("*", { count: "exact", head: true }),
-        supabase.from("referrals").select("*", { count: "exact", head: true }).eq("status", "paid"),
-        supabase.from("referrals").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("referrals").select("*", { count: "exact", head: true }).eq("org_id", orgId),
+        supabase.from("referrals").select("*", { count: "exact", head: true }).eq("status", "paid").eq("org_id", orgId),
+        supabase.from("referrals").select("*", { count: "exact", head: true }).eq("status", "pending").eq("org_id", orgId),
     ]);
 
     const tabCounts = {
@@ -43,6 +48,7 @@ export default async function ReferralsPage({
         const { data: matchingAffiliates } = await supabase
             .from("affiliates")
             .select("id")
+            .eq("org_id", orgId)
             .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
         affiliateIds = matchingAffiliates?.map((a) => a.id) ?? [];
     }
@@ -51,6 +57,7 @@ export default async function ReferralsPage({
     let query = supabase
         .from("referrals")
         .select("*", { count: "exact" })
+        .eq("org_id", orgId)
         .order("created_at", { ascending: false });
 
     if (statusFilter !== "all") {
@@ -93,6 +100,7 @@ export default async function ReferralsPage({
         const { data: commissionsData } = await supabase
             .from('commissions')
             .select('amount, revenue, customer_email, status, affiliate_id, created_at')
+            .eq('org_id', orgId)
             .in('customer_email', emails);
         commsData = commissionsData || [];
     }
@@ -139,16 +147,16 @@ export default async function ReferralsPage({
     });
 
     // Step 4: Fetch campaigns for the Actions cell
-    const { data: campaigns } = await supabase.from('campaigns').select('*');
+    const { data: campaigns } = await supabase.from('campaigns').select('*').eq('org_id', orgId);
 
     // Step 5: Fetch all affiliates for the manual referral dropdown
-    const { data: allAffiliates } = await supabase.from('affiliates').select('id, name, email').order('created_at', { ascending: false }).limit(500);
+    const { data: allAffiliates } = await supabase.from('affiliates').select('id, name, email').eq('org_id', orgId).order('created_at', { ascending: false }).limit(500);
 
     const displayTotal = filteredCount ?? 0;
 
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto font-sans">
+        <div className="space-y-6 max-w-7xl font-sans">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">

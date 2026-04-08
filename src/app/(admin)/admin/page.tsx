@@ -10,31 +10,38 @@ import { AdminSetupChecklist } from "./AdminSetupChecklist";
 export default async function AdminDashboard() {
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
   const { data: org } = await supabase
     .from('organizations')
-    .select('stripe_webhook_id')
+    .select('id, stripe_webhook_id')
+    .eq('owner_id', user?.id || '')
     .limit(1)
     .single();
+
+  const orgId = org?.id;
 
   // Fetch real aggregated data
   const { count: affiliatesCount } = await supabase
     .from('affiliates')
-    .select('*', { count: 'exact', head: true });
+    .select('*', { count: 'exact', head: true })
+    .eq('org_id', orgId);
 
   const { data: stats } = await supabase
     .from('affiliates')
-    .select('clicks, total_commission');
+    .select('clicks, total_commission')
+    .eq('org_id', orgId);
 
   const totalClicks = stats?.reduce((acc, curr) => acc + (curr.clicks || 0), 0) || 0;
   const totalCommissions = stats?.reduce((acc, curr) => acc + Number(curr.total_commission || 0), 0) || 0;
   const estimatedRevenue = totalCommissions * 3.33;
 
-  const { data: campaigns } = await supabase.from("campaigns").select("*");
+  const { data: campaigns } = await supabase.from("campaigns").select("*").eq('org_id', orgId);
 
   // Recent referrals — 2-step fetch (no FK on referrals.affiliate_id)
   const { data: rawRecentReferrals } = await supabase
     .from("referrals")
     .select("*")
+    .eq('org_id', orgId)
     .order("created_at", { ascending: false })
     .limit(8);
 
@@ -76,7 +83,7 @@ export default async function AdminDashboard() {
   });
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto font-sans">
+    <div className="space-y-8 max-w-6xl font-sans">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
           <Network className="w-5 h-5 text-white" />
