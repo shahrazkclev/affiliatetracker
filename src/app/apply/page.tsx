@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { sendSignupConfirmation, checkEmailConfirmed } from "./actions";
+import { sendSignupConfirmation, checkEmailConfirmed } from "@/app/actions";
 import { loginWithPassword } from "@/app/login/actions";
 import { AlertCircle, Loader2, Mail, CheckCircle2, RefreshCw } from 'lucide-react';
 

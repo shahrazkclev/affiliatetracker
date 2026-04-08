@@ -1,0 +1,64 @@
+
+> affiliate-platform@0.1.0 build
+> next build
+
+▲ Next.js 16.2.2 (Turbopack)
+- Environments: .env.local
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 2 errors:
+./src/app/apply/page.tsx:10:1
+Module not found: Can't resolve './actions'
+  [90m 8 |[0m ...[32m/components/ui/input"[0m;
+  [90m 9 |[0m ...[32m/components/ui/label"[0m;
+[31m[1m>[0m [90m10 |[0m ...rmation, checkEmailConfi...
+  [90m   |[0m    [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m ...rd } [36mfrom[0m [32m"@/app/login/a...[0m
+  [90m12 |[0m ...[33mader2[0m, [33mMail[0m, [33mCheckCircle.[0m..
+  [90m13 |[0m ...
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/apply/page.tsx [Client Component Browser]
+    ./src/app/apply/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/apply/page.tsx [Client Component SSR]
+    ./src/app/apply/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./src/app/page.tsx:3:1
+Module not found: Can't resolve 'framer-motion'
+  [90m1 |[0m ...[32mient'[0m;
+  [90m2 |[0m ...
+[31m[1m>[0m [90m3 |[0m ...{ motion } [36mfrom[0m [32m'framer-m...[0m
+  [90m  |[0m    [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m4 |[0m ...{ [33mArrowRight[0m, [33mBarChart3[0m, [33m...[0m
+  [90m5 |[0m ...[33mLink[0m [36mfrom[0m [32m'next/link'[0m;
+  [90m6 |[0m ...[33mFooter[0m [36mfrom[0m [32m'../component...[0m
+
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./src/app/apply/page.tsx:10:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./src/app/page.tsx:3:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
