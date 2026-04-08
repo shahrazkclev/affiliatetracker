@@ -78,3 +78,66 @@ export async function saveCustomDomain(domain: string) {
         return { success: false, error: error.message || 'Server error' };
     }
 }
+
+export async function getCustomDomainStatus(domain: string) {
+    try {
+        const CF_ZONE_ID = process.env.CLOUDFLARE_ZONE_ID;
+        const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+        if (!CF_ZONE_ID || !CF_API_TOKEN) return { success: false, status: 'unknown' };
+
+        const res = await fetch(`https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/custom_hostnames?hostname=${domain}`, {
+            headers: {
+                'Authorization': `Bearer ${CF_API_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await res.json();
+        
+        if (data.success && data.result?.length > 0) {
+            return { success: true, status: data.result[0].status };
+        }
+        return { success: false, status: 'unknown' };
+    } catch {
+        return { success: false, status: 'unknown' };
+    }
+}
+
+export async function removeCustomDomain(domain: string) {
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { success: false, error: 'Unauthorized' };
+
+        const { data: org } = await supabase.from('organizations').select('id').eq('owner_id', user.id).single();
+        if (!org) return { success: false, error: 'Org not found' };
+
+        const CF_ZONE_ID = process.env.CLOUDFLARE_ZONE_ID;
+        const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+
+        // Try to delete from Cloudflare if environment is present
+        if (CF_ZONE_ID && CF_API_TOKEN && domain) {
+            // First get the ID
+            const getRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/custom_hostnames?hostname=${domain}`, {
+                headers: { 'Authorization': `Bearer ${CF_API_TOKEN}`, 'Content-Type': 'application/json' }
+            });
+            const getData = await getRes.json();
+            
+            if (getData.success && getData.result?.length > 0) {
+                const hostnameId = getData.result[0].id;
+                // Delete it
+                await fetch(`https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/custom_hostnames/${hostnameId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${CF_API_TOKEN}`, 'Content-Type': 'application/json' }
+                });
+            }
+        }
+
+        // Update DB
+        await supabase.from('organizations').update({ custom_domain: null }).eq('id', org.id);
+        
+        revalidatePath('/admin/settings');
+        return { success: true };
+    } catch (err: any) {
+        return { success: false, error: err.message || 'Server error' };
+    }
+}

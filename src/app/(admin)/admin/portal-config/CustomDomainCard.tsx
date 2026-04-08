@@ -6,14 +6,43 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Globe, Loader2, CircleCheck, CircleX, ChevronRight } from "lucide-react";
-import { saveCustomDomain } from "./cloudflare-actions";
+import { Globe, Loader2, CircleCheck, CircleX, ChevronRight, AlertCircle, Trash2 } from "lucide-react";
+import { saveCustomDomain, getCustomDomainStatus, removeCustomDomain } from "./cloudflare-actions";
 
 export function CustomDomainCard({ currentDomain }: { currentDomain: string | null }) {
     const [domain, setDomain] = useState(currentDomain || '');
     const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
     const [isPending, startTransition] = useTransition();
     const [hasConfiguredDns, setHasConfiguredDns] = useState(false);
+    
+    // Status tracking for existing domains
+    const [domainStatus, setDomainStatus] = useState<string | null>(null);
+    const [isChecking, setIsChecking] = useState(currentDomain ? true : false);
+
+    import('react').then((React) => {
+        React.useEffect(() => {
+            if (currentDomain) {
+                getCustomDomainStatus(currentDomain).then(res => {
+                    setDomainStatus(res.status);
+                    setIsChecking(false);
+                });
+            }
+        }, [currentDomain]);
+    });
+
+    async function handleRemove() {
+        if (!currentDomain || !confirm("Are you sure you want to completely remove this custom domain map?")) return;
+        setMsg(null);
+        startTransition(async () => {
+            const res = await removeCustomDomain(currentDomain);
+            if (res.success) {
+                setDomain('');
+                // Note: The page will normally refresh via NextJS revalidatePath in the action.
+            } else {
+                setMsg({ ok: false, text: res.error || 'Failed to remove domain.' });
+            }
+        });
+    }
 
     async function handleSave(e: React.FormEvent) {
         e.preventDefault();
@@ -40,9 +69,54 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-5">
-                <form onSubmit={handleSave} className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label className="text-zinc-400 text-xs uppercase tracking-wider font-semibold">
+                {currentDomain ? (
+                    <div className="space-y-4">
+                        <div className="bg-black/20 border border-zinc-800 p-4 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-sm font-mono text-purple-400 select-all">{currentDomain}</h3>
+                                <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+                                    {isChecking ? (
+                                        <><Loader2 className="w-3.5 h-3.5 text-zinc-500 animate-spin" /><span className="text-zinc-500">Checking status with Cloudflare...</span></>
+                                    ) : domainStatus === 'active' ? (
+                                        <><CircleCheck className="w-3.5 h-3.5 text-emerald-500" /><span className="text-emerald-500 font-medium tracking-wide">Active & Secured</span></>
+                                    ) : domainStatus === 'pending_validation' || domainStatus === 'pending' ? (
+                                        <><Loader2 className="w-3.5 h-3.5 text-yellow-500 animate-spin" /><span className="text-yellow-500 font-medium tracking-wide">Pending DNS Propagation</span></>
+                                    ) : (
+                                        <><AlertCircle className="w-3.5 h-3.5 text-red-500" /><span className="text-red-500 font-medium">{domainStatus === 'unknown' ? 'Not Foud' : 'Error / Disconnected'}</span></>
+                                    )}
+                                </div>
+                            </div>
+                            <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={handleRemove}
+                                disabled={isPending}
+                                className="bg-red-950/40 text-red-400 hover:bg-red-950/80 hover:text-red-300 border border-red-900/50"
+                            >
+                                {isPending ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Trash2 className="w-3.5 h-3.5 mr-2" />}
+                                Remove Domain
+                            </Button>
+                        </div>
+                        
+                        {(domainStatus === 'pending_validation' || domainStatus === 'pending') && (
+                            <p className="text-[11px] text-zinc-500 bg-zinc-900/50 p-3 rounded border border-zinc-800 leading-relaxed">
+                                <strong className="text-zinc-300">Awaiting DNS:</strong> We are waiting for your DNS provider (e.g. GoDaddy, Namecheap) to broadcast your new CNAME record globally. This typically takes 5–15 minutes but can take up to 24 hours depending on your registrar's TTL settings. No further action is required from your side.
+                            </p>
+                        )}
+                        
+                        {msg && (
+                            <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${
+                                msg.ok ? 'bg-emerald-950/30 border-emerald-500/20 text-emerald-400' : 'bg-red-950/30 border-red-500/20 text-red-400'
+                            }`}>
+                                {msg.ok ? <CircleCheck className="w-3.5 h-3.5" /> : <CircleX className="w-3.5 h-3.5 shrink-0" />}
+                                {msg.text}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <form onSubmit={handleSave} className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label className="text-zinc-400 text-xs uppercase tracking-wider font-semibold">
                             Enter Custom Domain
                         </Label>
                         <Input
@@ -107,6 +181,7 @@ export function CustomDomainCard({ currentDomain }: { currentDomain: string | nu
                         )}
                     </Button>
                 </form>
+                )}
             </CardContent>
         </Card>
     );
