@@ -38,7 +38,12 @@ export async function requestPayout(affiliateId: string, amount: number) {
 
     // Fall back to the signed-in user's email (org owner)
     if (!adminEmail && org?.owner_id) {
-        const { data: ownerUser } = await supabase.auth.admin.getUserById(org.owner_id);
+        const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+        const adminSupabase = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+        const { data: ownerUser } = await adminSupabase.auth.admin.getUserById(org.owner_id);
         adminEmail = ownerUser?.user?.email || null;
     }
 
