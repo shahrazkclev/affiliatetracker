@@ -13,7 +13,8 @@ export default async function GeneratePayoutsPage({
 }) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: org } = await supabase.from('organizations').select('id').eq('owner_id', user?.id || '').single();
+    const { data: teamMembership } = await supabase.from('team_members').select('org_id').eq('user_id', user?.id || '').single();
+    const org = teamMembership ? { id: teamMembership.org_id } : null;
     if (!org) return <div className="p-8 text-red-500">Organization not found.</div>;
     const orgId = org.id;
 

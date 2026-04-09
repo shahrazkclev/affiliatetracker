@@ -28,6 +28,7 @@ const navGroups = [
     items: [
       { icon: Megaphone, label: "Campaigns", href: "/admin/campaigns" },
       { icon: MonitorPlay, label: "Portal Config", href: "/admin/portal-config" },
+      { icon: Users, label: "Team Members", href: "/admin/team" },
       { icon: CreditCard, label: "Subscription", href: "/admin/billing" },
       { icon: Settings, label: "Settings", href: "/admin/settings" },
     ]

@@ -129,5 +129,5 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
         redirect('/login?message=Check your email to verify your account.');
     }
 
-    redirect('/admin');
+    redirect('/register/configure');
 }

@@ -221,3 +221,25 @@ export const ACCOUNT_REVISION_TEMPLATE = (
   `,
   logoHeight
 );
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH LINKS (PASSWORD RESET, SETUP, MAGIC LINK)
+// ─────────────────────────────────────────────────────────────────────────────
+export const AUTH_LINK_TEMPLATE = (
+  subject: string,
+  preHeaderText: string,
+  ctaText: string,
+  actionLink: string,
+  logoUrl?: string,
+  logoHeight: number = 44
+) => emailShell(
+  subject,
+  logoUrl,
+  `
+  <h1 style="margin:0 0 14px;font-size:26px;font-weight:800;line-height:1.25;color:#fafafa;">${subject}</h1>
+  <p style="margin:0 0 24px;font-size:15px;line-height:1.75;color:#71717a;">${preHeaderText}</p>
+  ${ctaButton(ctaText, actionLink)}
+  <p style="margin:30px 0 0;font-size:13px;line-height:1.6;color:#52525b;">If you didn't request this email, you can safely ignore it.</p>
+  `,
+  logoHeight
+);

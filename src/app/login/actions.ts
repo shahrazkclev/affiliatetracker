@@ -43,7 +43,7 @@ export async function checkLoginStatus(formData: FormData): Promise<{
     // 2. Check if they are an affiliate
     const { data: affiliate, error: affErr } = await admin
         .from('affiliates')
-        .select('id, user_id')
+        .select('id, user_id, org_id')
         .eq('email', email)
         .limit(1)
         .maybeSingle();
@@ -77,10 +77,35 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         // Link to affiliate row
         await admin.from('affiliates').update({ user_id: created.user.id }).eq('id', affiliate.id);
 
-        // Send password setup email
-        await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${SITE_URL}/auth/callback?next=/reset-password`,
+        // Send password setup email natively using generated link
+        const { data: linkData } = await admin.auth.admin.generateLink({
+            type: 'recovery',
+            email,
+            options: { redirectTo: `${SITE_URL}/auth/callback?next=/reset-password` }
         });
+
+        if (linkData?.properties?.action_link) {
+            const orgId = affiliate?.org_id || await (await import('@/utils/supabase/server')).getResolvedOrgId();
+            const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
+            const { dispatchEmail } = await import('@/lib/email');
+            
+            let logoUrl, logoHeight;
+            if (orgId) {
+                const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height').eq('id', orgId).maybeSingle();
+                logoUrl = orgInfo?.logo_url;
+                logoHeight = orgInfo?.logo_email_height;
+            }
+            
+            const htmlContent = AUTH_LINK_TEMPLATE(
+                'Setup your password',
+                'Welcome! You have been granted access. Click the button below to set up your password and sign in.',
+                'Set Password',
+                linkData.properties.action_link,
+                logoUrl,
+                logoHeight
+            );
+            await dispatchEmail(orgId, { to: email, subject: 'Setup your password', html: htmlContent, _rawHtmlOverride: true } as any);
+        }
 
         return { setupEmailSent: true };
     }
@@ -99,15 +124,38 @@ export async function sendMagicLink(formData: FormData): Promise<{ error?: strin
     const isLocal = (await siteHost).includes('localhost');
     const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
 
-    const { error } = await supabase.auth.signInWithOtp({
+    const admin = getAdminClient();
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+        type: 'magiclink',
         email,
-        options: {
-            shouldCreateUser: false,
-            emailRedirectTo: `${SITE_URL}/auth/callback`,
-        },
+        options: { redirectTo: `${SITE_URL}/auth/callback` }
     });
 
-    if (error) return { error: error.message };
+    if (linkErr) return { error: linkErr.message };
+
+    if (linkData?.properties?.action_link) {
+        const orgId = await (await import('@/utils/supabase/server')).getResolvedOrgId();
+        const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
+        const { dispatchEmail } = await import('@/lib/email');
+        
+        let logoUrl, logoHeight;
+        if (orgId) {
+            const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height').eq('id', orgId).maybeSingle();
+            logoUrl = orgInfo?.logo_url;
+            logoHeight = orgInfo?.logo_email_height;
+        }
+
+        const htmlContent = AUTH_LINK_TEMPLATE(
+            'Your Magic Link',
+            'Click the button below to securely sign in to your dashboard.',
+            'Sign In Instantly',
+            linkData.properties.action_link,
+            logoUrl,
+            logoHeight
+        );
+        await dispatchEmail(orgId, { to: email, subject: 'Your Magic Link', html: htmlContent, _rawHtmlOverride: true } as any);
+    }
+
     return {};
 }
 
@@ -127,16 +175,17 @@ export async function loginWithPassword(formData: FormData): Promise<{ error?: s
 
     console.log('[loginWithPassword] Sign in success for user ID:', signInData.user?.id);
 
-    // Check if this user owns an organization → send to admin panel
+    // Check if this user is a team member of an organization → send to admin panel
     const userId = signInData.user?.id;
     if (userId) {
-        const { data: org } = await admin
-            .from('organizations')
-            .select('id')
-            .eq('owner_id', userId)
+        const { data: teamMembership } = await admin
+            .from('team_members')
+            .select('org_id')
+            .eq('user_id', userId)
             .maybeSingle();
-        if (org) {
-            console.log('[loginWithPassword] User is an admin owner of org:', org.id, 'redirecting -> /admin');
+            
+        if (teamMembership?.org_id) {
+            console.log('[loginWithPassword] User is an admin/team member of org:', teamMembership.org_id, 'redirecting -> /admin');
             revalidatePath('/', 'layout');
             redirect('/admin');
         }
@@ -179,12 +228,39 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     const isLocal = (await siteHost).includes('localhost');
     const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${SITE_URL}/auth/callback?next=/reset-password`,
+    const admin = getAdminClient();
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo: `${SITE_URL}/auth/callback?next=/reset-password` }
     });
 
+    if (linkErr) console.error('[sendPasswordReset] Generate Link Error:', linkErr.message);
+
+    if (linkData?.properties?.action_link) {
+        const orgId = await (await import('@/utils/supabase/server')).getResolvedOrgId();
+        const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
+        const { dispatchEmail } = await import('@/lib/email');
+        
+        let logoUrl, logoHeight;
+        if (orgId) {
+            const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height').eq('id', orgId).maybeSingle();
+            logoUrl = orgInfo?.logo_url;
+            logoHeight = orgInfo?.logo_email_height;
+        }
+
+        const htmlContent = AUTH_LINK_TEMPLATE(
+            'Reset Password',
+            'Someone requested a password reset for your account. If this was you, click the button below to choose a new password.',
+            'Reset Password',
+            linkData.properties.action_link,
+            logoUrl,
+            logoHeight
+        );
+        await dispatchEmail(orgId, { to: email, subject: 'Reset Your Password', html: htmlContent, _rawHtmlOverride: true } as any);
+    }
+
     // Always return success to prevent email enumeration
-    if (error) console.error('[sendPasswordReset]', error.message);
     return {};
 }
 
