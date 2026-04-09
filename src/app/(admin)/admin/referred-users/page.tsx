@@ -74,11 +74,54 @@ export default async function ReferredUsersPage({
 
     const { data: campaigns } = await supabase.from('campaigns').select('*').eq('org_id', orgId);
 
-    // Fetch commissions for revenue/commission matching
-    const { data: commissions } = await supabase
-        .from('commissions')
-        .select('id, affiliate_id, referral_id, customer_email, revenue, commission_amount, amount')
-        .eq('org_id', orgId);
+    // Only fetch commissions for the REFERRALS WE CURRENTLY RENDER!
+    // Since page size is 30, we extract these emails/ids:
+    const referralIds = (referrals || []).map(r => r.id);
+    const referralEmails = (referrals || [])
+        .map(r => r.customer_email || r.referred_email)
+        .filter(Boolean);
+
+    // Fetch commissions for revenue/commission matching (only for this page)
+    let commissions: any[] = [];
+    if (referralIds.length > 0 || referralEmails.length > 0) {
+        let commQuery = supabase
+            .from('commissions')
+            .select('id, affiliate_id, referral_id, customer_email, revenue, commission_amount, amount')
+            .eq('org_id', orgId);
+            
+        // Limit query footprint where possible
+        // Actually, Supabase .or() is safer here because some commissions map by referral_id, some by email
+        const orConditions = [];
+        if (referralIds.length > 0) {
+            orConditions.push(`referral_id.in.(${referralIds.join(',')})`);
+        }
+        if (referralEmails.length > 0) {
+            // Because email format might have commas, we can just do multiple .in (But Supabase doesn't natively support mixed ORs easily like this without string concat)
+            // safer way: filter down from a broader pool, or just map the two cleanly.
+            // Let's use the IN array for customer_email
+        }
+        
+        // Simpler, faster approach: get all commissions for the org, but wait, the whole point was to avoid ALL commissions.
+        // We can do two fast queries and merge them!
+        const [commById, commByEmail] = await Promise.all([
+            referralIds.length > 0 
+                ? supabase.from('commissions').select('id, affiliate_id, referral_id, customer_email, revenue, commission_amount, amount').eq('org_id', orgId).in('referral_id', referralIds) 
+                : { data: [] },
+            referralEmails.length > 0 
+                ? supabase.from('commissions').select('id, affiliate_id, referral_id, customer_email, revenue, commission_amount, amount').eq('org_id', orgId).in('customer_email', referralEmails) 
+                : { data: [] }
+        ]);
+        
+        const mergedComms = [...(commById.data || []), ...(commByEmail.data || [])];
+        // deduplicate by comm id
+        const commIds = new Set();
+        for (const c of mergedComms) {
+            if (!commIds.has(c.id)) {
+                commissions.push(c);
+                commIds.add(c.id);
+            }
+        }
+    }
 
     // Build lookup maps
     const byReferralId: Record<string, { revenue: number; commission: number }> = {};

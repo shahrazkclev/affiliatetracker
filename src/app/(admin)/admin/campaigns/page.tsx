@@ -8,10 +8,21 @@ import { CampaignListClient } from "./CampaignListClient";
 
 export default async function CampaignsPage() {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Get org_id from team_members
+    const { data: teamMembership } = await supabase
+        .from('team_members')
+        .select('org_id')
+        .eq('user_id', user?.id || '')
+        .single();
+        
+    const orgId = teamMembership?.org_id;
 
     const { data: campaigns } = await supabase
         .from('campaigns')
         .select('*')
+        .eq('org_id', orgId)
         .order('created_at', { ascending: false });
 
 

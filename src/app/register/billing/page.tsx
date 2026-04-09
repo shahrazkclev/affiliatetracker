@@ -100,7 +100,13 @@ export default async function RegisterBillingPage() {
                         <PricingCard 
                             title="Base Plan"
                             price="$24"
-                            features={["Unlimited Affiliates", "Affiliate Portal Access", "Automated Stripe Payouts"]}
+                            features={[
+                                "Up to 100 Active Affiliates",
+                                "Standard affiliatemango.com Portal",
+                                "Shared SMTP Notifications",
+                                "1 Admin Seat",
+                                "Automated Stripe Payouts"
+                            ]}
                             buttonText="Start 14-Day Free Trial"
                             formAction={createSaasCheckoutSession}
                             planValue="base"
@@ -110,7 +116,13 @@ export default async function RegisterBillingPage() {
                         <PricingCard 
                             title="Pro Plan"
                             price="$49"
-                            features={["Everything in Base", "Custom Tenant Domain", "Advanced Portal Customization"]}
+                            features={[
+                                "Unlimited Active Affiliates",
+                                "Custom Tenant Domain Mapping",
+                                "Dedicated Custom SMTP Routing",
+                                "Up to 3 Team Member Seats",
+                                "Priority Feature Support"
+                            ]}
                             isPopular={true}
                             buttonText="Start 14-Day Free Trial"
                             formAction={createSaasCheckoutSession}

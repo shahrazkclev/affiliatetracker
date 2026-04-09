@@ -14,7 +14,7 @@ export default async function BillingPage() {
     // Try to safely fetch billing info, ignoring failure if the columns are missing (since the user might not have run the migration yet)
     const { data: org, error } = await supabase
         .from('organizations')
-        .select('plan_status, trial_ends_at, plan_name, is_free_forever')
+        .select('id, plan_status, trial_ends_at, plan_name, is_free_forever')
         .eq('owner_id', user.id)
         .maybeSingle();
 
@@ -23,9 +23,23 @@ export default async function BillingPage() {
         console.error("Billing columns may be missing. Did you run the SQL migration?");
     }
 
+    let affiliateCount = 0;
+    if (org?.id) {
+        const { count } = await supabase
+            .from('affiliates')
+            .select('*', { count: 'exact', head: true })
+            .eq('org_id', org.id);
+        affiliateCount = count || 0;
+    }
+
     const isFreeForever = org?.is_free_forever === true;
     const planStatus = org?.plan_status || 'trialing';
-    const planName = org?.plan_name || 'Free Trial';
+    const planName = (org?.plan_name || 'Free Trial').toLowerCase();
+    const isPro = planName === 'pro' || isFreeForever;
+    const limitMax = isPro ? 'Unlimited' : 100;
+    const limitPercentage = typeof limitMax === 'number' ? Math.min((affiliateCount / limitMax) * 100, 100) : 0;
+    const isNearingLimit = typeof limitMax === 'number' && limitPercentage >= 90;
+
     const trialEndsAt = org?.trial_ends_at ? new Date(org.trial_ends_at) : new Date();
 
     const isTrialing = planStatus === 'trialing';
@@ -42,7 +56,7 @@ export default async function BillingPage() {
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <h2 className="text-2xl font-semibold text-white capitalize">
-                                {isFreeForever ? 'Free Forever Plan' : (isActive ? `${planName} Plan` : 'Free Trial')}
+                                {isFreeForever ? 'Free Forever Plan' : (isActive ? `${org?.plan_name || 'Active'} Plan` : 'Free Trial')}
                             </h2>
                             {isFreeForever ? (
                                 <span className="bg-zinc-100 text-zinc-900 px-3 py-1 rounded-full text-xs font-bold shadow-sm shadow-white/20 border border-white">
@@ -95,6 +109,36 @@ export default async function BillingPage() {
                     </div>
 
                 </div>
+
+                {/* Usage Limits Progress Bar */}
+                <div className="mt-8 pt-6 border-t border-zinc-800">
+                    <div className="flex justify-between items-end mb-2">
+                        <div>
+                            <h3 className="text-sm font-semibold text-zinc-300">Active Affiliates Usage</h3>
+                            <p className="text-xs text-zinc-500 mt-0.5">Calculated based on your current {isPro ? 'Pro' : 'Base'} plan limits.</p>
+                        </div>
+                        <div className="text-right">
+                            <span className={`text-lg font-bold font-mono tracking-tight ${isNearingLimit ? 'text-amber-500' : 'text-zinc-100'}`}>
+                                {affiliateCount}
+                            </span>
+                            <span className="text-zinc-500 text-sm font-mono tracking-tight">
+                                {" / "}{typeof limitMax === 'string' ? "∞" : limitMax}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden border border-zinc-800 shadow-inner">
+                        <div 
+                            className={`h-full rounded-full transition-all duration-1000 ${isPro ? 'bg-indigo-500 w-full opacity-50' : (isNearingLimit ? 'bg-amber-500' : 'bg-emerald-500')}`}
+                            style={{ width: isPro ? '100%' : (limitPercentage + '%') }}
+                        />
+                    </div>
+                    {isNearingLimit && !isPro && (
+                        <p className="text-xs text-amber-500/80 mt-2">
+                            You are approaching your Base plan's limit. Upgrade to Pro for unlimited affiliates.
+                        </p>
+                    )}
+                </div>
             </div>
 
             {!isActive && !isFreeForever && (
@@ -102,7 +146,13 @@ export default async function BillingPage() {
                     <PricingCard 
                         title="Base Plan"
                         price="$24"
-                        features={["Unlimited Affiliates", "Affiliate Portal Access", "Automated Stripe Payouts"]}
+                        features={[
+                            "Up to 100 Active Affiliates",
+                            "Standard affiliatemango.com Portal",
+                            "Shared SMTP Notifications",
+                            "1 Admin Seat",
+                            "Automated Stripe Payouts"
+                        ]}
                         buttonText="Choose Base"
                         formAction={createSaasCheckoutSession}
                         planValue="base"
@@ -112,7 +162,13 @@ export default async function BillingPage() {
                     <PricingCard 
                         title="Pro Plan"
                         price="$49"
-                        features={["Everything in Base", "Custom Tenant Domain", "Advanced Portal Customization"]}
+                        features={[
+                            "Unlimited Active Affiliates",
+                            "Custom Tenant Domain Mapping",
+                            "Dedicated Custom SMTP Routing",
+                            "Up to 3 Team Member Seats",
+                            "Priority Feature Support"
+                        ]}
                         isPopular={true}
                         buttonText="Choose Pro"
                         formAction={createSaasCheckoutSession}

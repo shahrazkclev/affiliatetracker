@@ -101,12 +101,6 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-zinc-800/50 bg-zinc-950/80 backdrop-blur-sm">
-        <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
-          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-          System Online
-        </div>
-      </div>
     </aside>
   );
 }

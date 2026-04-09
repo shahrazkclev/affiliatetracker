@@ -106,11 +106,10 @@ export default async function ReferralsPage({
         commsData = commissionsData || [];
     }
 
-    // Fetch payouts to calculate effective commission status
-    const { data: payoutsData } = await supabase
-        .from('payouts')
-        .select('affiliate_id, created_at')
-        .order('created_at', { ascending: true });
+    // Fetch payouts only for the affiliates we are rendering!
+    const { data: payoutsData } = uniqueAffIds.length > 0 
+        ? await supabase.from('payouts').select('affiliate_id, created_at').in('affiliate_id', uniqueAffIds)
+        : { data: [] };
 
     const payoutMap: Record<string, Date[]> = {};
     for (const p of payoutsData || []) {
