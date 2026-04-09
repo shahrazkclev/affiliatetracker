@@ -11,17 +11,31 @@ export default async function BillingPage() {
         redirect('/login');
     }
 
-    // Try to safely fetch billing info, ignoring failure if the columns are missing (since the user might not have run the migration yet)
+    // Try to safely fetch billing info
     const { data: org, error } = await supabase
         .from('organizations')
-        .select('id, plan_status, trial_ends_at, plan_name, is_free_forever')
+        .select(`
+            id, 
+            plan_status, 
+            trial_ends_at, 
+            plan_name, 
+            is_free_forever, 
+            plan_id,
+            saas_plans (id, name, max_affiliates, features)
+        `)
         .eq('owner_id', user.id)
         .maybeSingle();
 
     if (error && error.code !== 'PGRST116') {
-        // Suppressing the missing column crash for now to render a graceful stub
         console.error("Billing columns may be missing. Did you run the SQL migration?");
     }
+
+    // Determine current plan from DB Join or Fallback
+    const currentPlan = org?.saas_plans;
+    
+    // Fallback logic if the migration hasn't properly linked everything yet
+    const legacyPlanName = (org?.plan_name || 'Free Trial').toLowerCase();
+    const isProLegacy = legacyPlanName === 'pro';
 
     let affiliateCount = 0;
     if (org?.id) {
@@ -32,11 +46,23 @@ export default async function BillingPage() {
         affiliateCount = count || 0;
     }
 
+    // Dynamically retrieve the active plans for the grid
+    const { data: activePlans } = await supabase
+        .from('saas_plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
     const isFreeForever = org?.is_free_forever === true;
     const planStatus = org?.plan_status || 'trialing';
-    const planName = (org?.plan_name || 'Free Trial').toLowerCase();
-    const isPro = planName === 'pro' || isFreeForever;
-    const limitMax = isPro ? 'Unlimited' : 100;
+    
+    // Dynamic Limits
+    const limitMax = isFreeForever 
+        ? 'Unlimited' 
+        : (currentPlan 
+            ? (currentPlan.max_affiliates === null ? 'Unlimited' : currentPlan.max_affiliates) 
+            : (isProLegacy ? 'Unlimited' : 100)); // Legacy fallback
+
     const limitPercentage = typeof limitMax === 'number' ? Math.min((affiliateCount / limitMax) * 100, 100) : 0;
     const isNearingLimit = typeof limitMax === 'number' && limitPercentage >= 90;
 
@@ -45,6 +71,8 @@ export default async function BillingPage() {
     const isTrialing = planStatus === 'trialing';
     const isActive = planStatus === 'active';
     const trialExpired = isTrialing && trialEndsAt.getTime() < Date.now();
+
+    const displayPlanName = currentPlan ? currentPlan.name : (org?.plan_name || 'Free Trial');
 
     return (
         <div className="max-w-4xl mx-auto py-12 px-6">
@@ -56,7 +84,7 @@ export default async function BillingPage() {
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <h2 className="text-2xl font-semibold text-white capitalize">
-                                {isFreeForever ? 'Free Forever Plan' : (isActive ? `${org?.plan_name || 'Active'} Plan` : 'Free Trial')}
+                                {isFreeForever ? 'Free Forever Plan' : (isActive ? `${displayPlanName}` : 'Free Trial')}
                             </h2>
                             {isFreeForever ? (
                                 <span className="bg-zinc-100 text-zinc-900 px-3 py-1 rounded-full text-xs font-bold shadow-sm shadow-white/20 border border-white">
@@ -115,7 +143,7 @@ export default async function BillingPage() {
                     <div className="flex justify-between items-end mb-2">
                         <div>
                             <h3 className="text-sm font-semibold text-zinc-300">Active Affiliates Usage</h3>
-                            <p className="text-xs text-zinc-500 mt-0.5">Calculated based on your current {isPro ? 'Pro' : 'Base'} plan limits.</p>
+                            <p className="text-xs text-zinc-500 mt-0.5">Calculated based on your current plan limits.</p>
                         </div>
                         <div className="text-right">
                             <span className={`text-lg font-bold font-mono tracking-tight ${isNearingLimit ? 'text-amber-500' : 'text-zinc-100'}`}>
@@ -129,62 +157,38 @@ export default async function BillingPage() {
                     
                     <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden border border-zinc-800 shadow-inner">
                         <div 
-                            className={`h-full rounded-full transition-all duration-1000 ${isPro ? 'bg-indigo-500 w-full opacity-50' : (isNearingLimit ? 'bg-amber-500' : 'bg-emerald-500')}`}
-                            style={{ width: isPro ? '100%' : (limitPercentage + '%') }}
+                            className={`h-full rounded-full transition-all duration-1000 ${limitMax === 'Unlimited' ? 'bg-indigo-500 w-full opacity-50' : (isNearingLimit ? 'bg-amber-500' : 'bg-emerald-500')}`}
+                            style={{ width: limitMax === 'Unlimited' ? '100%' : (limitPercentage + '%') }}
                         />
                     </div>
-                    {isNearingLimit && !isPro && (
+                    {isNearingLimit && limitMax !== 'Unlimited' && (
                         <p className="text-xs text-amber-500/80 mt-2">
-                            You are approaching your Base plan's limit. Upgrade to Pro for unlimited affiliates.
+                            You are approaching your plan's limit. Upgrade to a higher tier for more capacity.
                         </p>
                     )}
                 </div>
             </div>
 
             {!isActive && !isFreeForever && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                    <PricingCard 
-                        title="Base Plan"
-                        price="$24"
-                        features={[
-                            "Up to 100 Active Affiliates",
-                            "Unlimited Referrals & Clicks",
-                            "Hosted Affiliate Portal",
-                            "1 Commission Campaign",
-                            "Manual Stripe Payouts Export",
-                            "Standard Email Notifications",
-                            "Basic Analytics Dashboard",
-                            "1 Workspace Admin Seat",
-                            "Standard Email Support"
-                        ]}
-                        buttonText="Choose Base"
-                        formAction={createSaasCheckoutSession}
-                        planValue="base"
-                        index={0}
-                    />
-
-                    <PricingCard 
-                        title="Pro Plan"
-                        price="$49"
-                        features={[
-                            "Unlimited Active Affiliates",
-                            "Unlimited Referrals & Clicks",
-                            "Custom Tenant Domain Mapping",
-                            "Unlimited Commission Campaigns",
-                            "Custom Affiliate Commissions",
-                            "Automated Payouts Processing",
-                            "Custom SMTP Email Notifications",
-                            "Real-Time Global Webhooks",
-                            "Up to 3 Team Member Seats",
-                            "Remove 'Powered By' Branding",
-                            "Priority Tech Support"
-                        ]}
-                        isPopular={true}
-                        buttonText="Choose Pro"
-                        formAction={createSaasCheckoutSession}
-                        planValue="pro"
-                        index={1}
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+                    {activePlans?.map((plan, index) => (
+                        <PricingCard 
+                            key={plan.id}
+                            title={plan.name}
+                            price={`$${plan.price_amount}`}
+                            features={plan.features || []}
+                            isPopular={plan.is_popular}
+                            buttonText={`Choose ${plan.name}`}
+                            formAction={createSaasCheckoutSession}
+                            planValue={plan.id}
+                            index={index}
+                        />
+                    ))}
+                    {(!activePlans || activePlans.length === 0) && (
+                        <div className="col-span-full text-center text-zinc-500 p-8 border border-zinc-800 border-dashed rounded-xl">
+                            Loading available plans... Please ensure your billing configuration is set up.
+                        </div>
+                    )}
                 </div>
             )}
         </div>

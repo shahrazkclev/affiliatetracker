@@ -16,7 +16,7 @@ export async function createSaasCheckoutSession(formData: FormData) {
         return redirect('/login');
     }
 
-    const planType = formData.get('plan') as 'base' | 'pro' || 'pro';
+    const planIdOrName = formData.get('plan') as string;
 
     // Get the tenant's exact organization ID
     const { data: org } = await supabase
@@ -28,6 +28,28 @@ export async function createSaasCheckoutSession(formData: FormData) {
     if (!org) {
         throw new Error('Organization not found for checkout.');
     }
+
+    // Fetch the plan directly from the database
+    // We use the admin client here just in case they're trying to checkout 
+    // a plan that might just have been disabled, or to bypass RLS safely
+    const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+    const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    
+    // Resolve plan by ID or legacy name
+    let planData;
+    if (planIdOrName === 'base' || planIdOrName === 'pro') {
+        const { data } = await admin.from('saas_plans').select('*').ilike('name', `${planIdOrName}%`).single();
+        planData = data;
+    } else {
+        const { data } = await admin.from('saas_plans').select('*').eq('id', planIdOrName).single();
+        planData = data;
+    }
+
+    if (!planData || !planData.stripe_price_id) {
+        throw new Error("Invalid plan selected or plan is missing a Stripe Price ID.");
+    }
+
+    const priceId = planData.stripe_price_id;
 
     let customerId = org.stripe_customer_id;
 
@@ -41,18 +63,8 @@ export async function createSaasCheckoutSession(formData: FormData) {
         });
         customerId = customer.id;
 
-        // Optionally, save the bare customer ID early without making them type a credit card yet string
-        const { createClient: createAdminClient } = await import('@supabase/supabase-js');
-        const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+        // Save the bare customer ID early
         await admin.from('organizations').update({ stripe_customer_id: customerId }).eq('id', org.id);
-    }
-
-    const priceId = planType === 'pro' 
-        ? process.env.NEXT_PUBLIC_STRIPE_SAAS_PRO_PRICE_ID 
-        : process.env.NEXT_PUBLIC_STRIPE_SAAS_BASE_PRICE_ID;
-
-    if (!priceId) {
-        throw new Error("Stripe Price ID is not set in your .env.local file yet.");
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://dashboard.affiliatemango.com';
@@ -70,11 +82,12 @@ export async function createSaasCheckoutSession(formData: FormData) {
         mode: 'subscription',
         metadata: {
             org_id: org.id,
-            plan_name: planType
+            plan_id: planData.id
         },
         subscription_data: {
             metadata: {
-                org_id: org.id // extremely critical for webhooks!
+                org_id: org.id,       // extremely critical for webhooks!
+                plan_id: planData.id  // New payload passing the dynamic plan UI
             }
         },
         success_url: `${siteUrl}/admin/billing?success=true`,

@@ -31,7 +31,18 @@ export default async function GlobalSettingsPage() {
     // Fetch org settings including SMTP, Domain and Payout Notification
     const { data: org, error: orgError } = await supabase
         .from('organizations')
-        .select('payout_notification_email, custom_domain, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from_email, plan_name, is_free_forever')
+        .select(`
+            payout_notification_email, 
+            custom_domain, 
+            smtp_host, 
+            smtp_port, 
+            smtp_user, 
+            smtp_pass, 
+            smtp_from_email, 
+            plan_name, 
+            is_free_forever,
+            saas_plans ( name )
+        `)
         .limit(1)
         .single();
         
@@ -39,7 +50,8 @@ export default async function GlobalSettingsPage() {
         console.error("Error fetching org in settings:", orgError);
     }
 
-    const isPro = org?.plan_name === 'pro' || org?.is_free_forever === true;
+    const planName = org?.saas_plans?.name || org?.plan_name || '';
+    const isPro = planName.toLowerCase().includes('pro') || org?.is_free_forever === true;
 
     const portalUrl = org?.custom_domain 
         ? `https://${org.custom_domain}` 

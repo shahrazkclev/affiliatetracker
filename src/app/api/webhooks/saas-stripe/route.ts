@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
                 // Get the subscription ID and the metadata we injected when creating the session
                 const subscriptionId = session.subscription as string;
                 const orgId = session.metadata?.org_id;
-                const planName = session.metadata?.plan_name || 'pro';
+                const planId = session.metadata?.plan_id;
+                const planName = session.metadata?.plan_name || 'pro'; // legacy fallback
 
                 if (!orgId) {
                     console.error('No org_id found in metadata');
@@ -58,7 +59,8 @@ export async function POST(req: NextRequest) {
                 await supabase.from('organizations').update({
                     stripe_subscription_id: subscriptionId,
                     plan_status: 'active',
-                    plan_name: planName
+                    plan_name: planName, // keep legacy field for backward compatibility
+                    ...(planId ? { plan_id: planId } : {}) // Update plan_id if provided
                 }).eq('id', orgId);
 
                 break;
