@@ -4,12 +4,13 @@ import { createClient } from "@/utils/supabase/server";
 import { PayoutDatePicker } from "@/components/PayoutDatePicker";
 import { PayoutBatchSelector } from "./PayoutBatchSelector";
 import { PayoutRequestsPanel } from "./PayoutRequestsPanel";
+import { PayoutThresholdInput } from "@/components/PayoutThresholdInput";
 
 
 export default async function GeneratePayoutsPage({
     searchParams,
 }: {
-    searchParams: Promise<{ date?: string }>
+    searchParams: Promise<{ date?: string; minAmount?: string }>
 }) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -22,6 +23,7 @@ export default async function GeneratePayoutsPage({
 
     const isAllTime = params.date === 'all' || !params.date;
     const targetDate = params.date && params.date !== 'all' ? new Date(params.date) : new Date();
+    const minAmount = Number(params.minAmount) || 0;
 
     // Fetch affiliates
     const { data: allAffiliates } = await supabase.from('affiliates').select('*').eq('org_id', orgId);
@@ -60,7 +62,7 @@ export default async function GeneratePayoutsPage({
             ...a,
             amount_owed: pendingSumMap[a.id] || 0,
         }))
-        .filter(a => a.amount_owed > 0)
+        .filter(a => a.amount_owed > 0 && a.amount_owed >= minAmount)
         .sort((a, b) => b.amount_owed - a.amount_owed);
 
     // Fetch pending payout requests from affiliates
@@ -113,8 +115,8 @@ export default async function GeneratePayoutsPage({
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-4xl font-bold text-zinc-100 font-mono tracking-tight flex items-end gap-2">
-                            $0 <span className="text-xs font-medium text-zinc-600 mb-1.5 uppercase font-sans tracking-widest">Min Value</span>
+                        <div className="text-4xl font-bold text-zinc-100 font-mono tracking-tight flex items-end gap-2 pt-2">
+                            <PayoutThresholdInput initialValue={minAmount} />
                         </div>
                     </CardContent>
                 </Card>
