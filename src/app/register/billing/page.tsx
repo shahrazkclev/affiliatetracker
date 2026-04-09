@@ -102,10 +102,14 @@ export default async function RegisterBillingPage() {
                             price="$24"
                             features={[
                                 "Up to 100 Active Affiliates",
-                                "Standard affiliatemango.com Portal",
-                                "Shared SMTP Notifications",
-                                "1 Admin Seat",
-                                "Automated Stripe Payouts"
+                                "Unlimited Referrals & Clicks",
+                                "Hosted Affiliate Portal",
+                                "1 Commission Campaign",
+                                "Manual Stripe Payouts Export",
+                                "Standard Email Notifications",
+                                "Basic Analytics Dashboard",
+                                "1 Workspace Admin Seat",
+                                "Standard Email Support"
                             ]}
                             buttonText="Start 14-Day Free Trial"
                             formAction={createSaasCheckoutSession}
@@ -118,10 +122,16 @@ export default async function RegisterBillingPage() {
                             price="$49"
                             features={[
                                 "Unlimited Active Affiliates",
+                                "Unlimited Referrals & Clicks",
                                 "Custom Tenant Domain Mapping",
-                                "Dedicated Custom SMTP Routing",
+                                "Unlimited Commission Campaigns",
+                                "Custom Affiliate Commissions",
+                                "Automated Payouts Processing",
+                                "Custom SMTP Email Notifications",
+                                "Real-Time Global Webhooks",
                                 "Up to 3 Team Member Seats",
-                                "Priority Feature Support"
+                                "Remove 'Powered By' Branding",
+                                "Priority Tech Support"
                             ]}
                             isPopular={true}
                             buttonText="Start 14-Day Free Trial"

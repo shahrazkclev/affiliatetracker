@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+};
+
+export async function OPTIONS() {
+    return NextResponse.json({}, { headers: corsHeaders });
+}
 
 export async function POST(req: Request) {
     try {
@@ -7,24 +17,27 @@ export async function POST(req: Request) {
         const { code, url, referrer } = body;
 
         if (!code) {
-            return NextResponse.json({ success: false, error: 'No code provided' }, { status: 400 });
+            return NextResponse.json({ success: false, error: 'No code provided' }, { status: 400, headers: corsHeaders });
         }
 
         // Parse code for tag if using format "REFCODE+TAG"
         const [refCode, ...tagParts] = code.split('+');
         const tag = tagParts.join('+') || null;
 
-        const supabase = await createClient();
+        const admin = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
 
         // Find the affiliate by referral code
-        const { data: affiliate } = await supabase
+        const { data: affiliate } = await admin
             .from('affiliates')
             .select('id, clicks')
             .eq('referral_code', refCode)
             .single();
 
         if (!affiliate) {
-            return NextResponse.json({ success: false, error: 'Affiliate not found' }, { status: 404 });
+            return NextResponse.json({ success: false, error: 'Affiliate not found' }, { status: 404, headers: corsHeaders });
         }
 
         // Extract client info
@@ -32,7 +45,7 @@ export async function POST(req: Request) {
         const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
 
         // 1. Insert into click_events table
-        const { error: insertError } = await supabase
+        const { error: insertError } = await admin
             .from('click_events')
             .insert({
                 affiliate_id: affiliate.id,
@@ -46,19 +59,17 @@ export async function POST(req: Request) {
             console.error('Failed to log click event:', insertError);
         }
 
-        // 2. Increment global clicks on the affiliate (using an RPC if possible, otherwise read/update)
-        // Since we don't know if there's an RPC, we just increment based on the read value.
-        // It's a soft counter, so typical race conditions are acceptable.
+        // 2. Increment global clicks on the affiliate
         const currentClicks = affiliate.clicks || 0;
-        await supabase
+        await admin
             .from('affiliates')
             .update({ clicks: currentClicks + 1 })
             .eq('id', affiliate.id);
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true }, { headers: corsHeaders });
 
     } catch (error) {
         console.error('Error tracking click:', error);
-        return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500, headers: corsHeaders });
     }
 }
