@@ -50,7 +50,10 @@ export default async function GlobalSettingsPage() {
         console.error("Error fetching org in settings:", orgError);
     }
 
-    const planName = org?.saas_plans?.name || org?.plan_name || '';
+    const linkedPlan: any = org?.saas_plans;
+    const currentPlanName = Array.isArray(linkedPlan) ? linkedPlan[0]?.name : linkedPlan?.name;
+
+    const planName = currentPlanName || org?.plan_name || '';
     const isPro = planName.toLowerCase().includes('pro') || org?.is_free_forever === true;
 
     const portalUrl = org?.custom_domain 

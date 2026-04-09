@@ -31,7 +31,8 @@ export default async function BillingPage() {
     }
 
     // Determine current plan from DB Join or Fallback
-    const currentPlan = org?.saas_plans;
+    const linkedPlan: any = org?.saas_plans;
+    const currentPlan = Array.isArray(linkedPlan) ? linkedPlan[0] : linkedPlan;
     
     // Fallback logic if the migration hasn't properly linked everything yet
     const legacyPlanName = (org?.plan_name || 'Free Trial').toLowerCase();
@@ -161,7 +162,7 @@ export default async function BillingPage() {
                             style={{ width: limitMax === 'Unlimited' ? '100%' : (limitPercentage + '%') }}
                         />
                     </div>
-                    {isNearingLimit && limitMax !== 'Unlimited' && (
+                    {isNearingLimit && String(limitMax) !== 'Unlimited' && (
                         <p className="text-xs text-amber-500/80 mt-2">
                             You are approaching your plan's limit. Upgrade to a higher tier for more capacity.
                         </p>
