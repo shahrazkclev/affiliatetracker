@@ -11,7 +11,7 @@ function getAdminClient() {
     );
 }
 
-export async function inviteTeamMember(formData: FormData): Promise<{ error?: string }> {
+export async function inviteTeamMember(formData: FormData): Promise<any> {
     const supabase = await createClient();
     const admin = getAdminClient();
     
@@ -94,7 +94,7 @@ export async function inviteTeamMember(formData: FormData): Promise<{ error?: st
     return {};
 }
 
-export async function removeTeamMember(formData: FormData): Promise<{ error?: string }> {
+export async function removeTeamMember(formData: FormData): Promise<any> {
     const supabase = await createClient();
     const admin = getAdminClient();
     
