@@ -297,6 +297,11 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
  * and sends it via org SMTP (or global SMTP fallback).
  * Completely bypasses Supabase redirect URL whitelist.
  */
+
+/**
+ * Sends a 6-digit OTP code via org SMTP (or global SMTP fallback).
+ * Uses Supabase generateLink to get the email_otp code without sending any email itself.
+ */
 export async function sendOtpEmail(formData: FormData): Promise<{ error?: string; sent?: boolean }> {
     const email = (formData.get('email') as string)?.trim().toLowerCase();
     if (!email) return { error: 'Email is required.' };
@@ -313,7 +318,6 @@ export async function sendOtpEmail(formData: FormData): Promise<{ error?: string
     const orgId = await getResolvedOrgId();
     if (!orgId) return { error: 'Organization not found.' };
 
-    // Check affiliate exists in this org (silent fail to prevent email enumeration)
     const { data: affiliate } = await admin
         .from('affiliates')
         .select('id')
@@ -321,6 +325,7 @@ export async function sendOtpEmail(formData: FormData): Promise<{ error?: string
         .eq('org_id', orgId)
         .maybeSingle();
 
+    // Silent success to prevent email enumeration
     if (!affiliate) return { sent: true };
 
     const { data: orgInfo } = await admin
@@ -331,43 +336,84 @@ export async function sendOtpEmail(formData: FormData): Promise<{ error?: string
 
     const appUrl = orgInfo?.custom_domain ? `https://${orgInfo.custom_domain}` : SITE_URL;
 
-    // Generate Supabase magic link — we only need the token inside
+    // Generate — email_otp is the 6-digit code, we handle our own email sending
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'magiclink',
         email,
-        options: { redirectTo: 'https://partners.affiliatemango.com/auth/otp' },
+        options: { redirectTo: 'https://partners.affiliatemango.com/portal' },
     });
 
-    if (linkErr || !linkData?.properties?.action_link) {
+    if (linkErr || !linkData?.properties?.email_otp) {
         console.error('[sendOtpEmail] generateLink error:', linkErr?.message);
-        return { error: 'Could not send login email. Please try again.' };
+        return { error: 'Could not generate code. Please try again.' };
     }
 
-    // Extract raw token → build OUR OTP URL (no Supabase redirect chain needed)
-    const rawToken = new URL(linkData.properties.action_link).searchParams.get('token');
-    if (!rawToken) return { error: 'Could not generate login link.' };
+    const otp = linkData.properties.email_otp;
 
-    const otpUrl = `https://partners.affiliatemango.com/auth/otp?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(email)}`;
-
-    const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
     const { dispatchEmail } = await import('@/lib/email');
 
-    const html = AUTH_LINK_TEMPLATE(
-        'Sign in to your account',
-        'Click the button below to securely sign in to your affiliate dashboard. This link is valid for 1 hour and can only be used once.',
-        'Sign In →',
-        otpUrl,
-        appUrl,
-        orgInfo?.logo_url,
-        orgInfo?.logo_email_height
-    );
+    const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#0e0e10;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0e0e10;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="padding:32px 32px 0;text-align:center;">
+            ${orgInfo?.logo_url ? `<img src="${orgInfo.logo_url}" alt="Logo" style="height:${orgInfo.logo_email_height || 40}px;margin-bottom:24px;" />` : ''}
+            <h1 style="color:#f4f4f5;font-size:20px;font-weight:700;margin:0 0 8px;">Your sign-in code</h1>
+            <p style="color:#71717a;font-size:14px;margin:0 0 32px;">Enter this code to sign in to your affiliate dashboard. It expires in 1 hour.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px;">
+            <div style="background-color:#09090b;border:1px solid #3f3f46;border-radius:8px;padding:24px;text-align:center;">
+              <span style="font-family:'Courier New',monospace;font-size:40px;font-weight:800;letter-spacing:12px;color:#f97316;">${otp}</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 32px 32px;text-align:center;">
+            <p style="color:#52525b;font-size:12px;margin:0;">If you didn't request this, you can safely ignore this email.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 
     await dispatchEmail(orgId, {
         to: email,
-        subject: 'Your sign-in link',
+        subject: `${otp} — your sign-in code`,
         html,
         _rawHtmlOverride: true,
     } as any);
 
     return { sent: true };
+}
+
+/**
+ * Verifies the 6-digit OTP code and creates a session.
+ */
+export async function verifyOtpCode(formData: FormData): Promise<{ error?: string }> {
+    const email = (formData.get('email') as string)?.trim().toLowerCase();
+    const code = (formData.get('code') as string)?.trim();
+
+    if (!email || !code) return { error: 'Email and code are required.' };
+
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: 'magiclink',
+    });
+
+    if (error || !data.user) {
+        return { error: 'Invalid or expired code. Please request a new one.' };
+    }
+
+    redirect('/portal');
 }
