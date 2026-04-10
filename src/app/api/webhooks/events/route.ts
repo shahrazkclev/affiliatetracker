@@ -77,16 +77,20 @@ export async function POST(req: Request) {
         // Fetch the specific tenant's branding and ensure we rely on the specific org for SMTP variables
         let orgLogoUrl: string | undefined;
         let orgLogoEmailHeight: number = 44;
+        let appUrl = 'https://partners.affiliatemango.com';
         
         if (orgId) {
             const { data: orgInfo } = await supabase
                 .from('organizations')
-                .select('logo_url, logo_email_height')
+                .select('logo_url, logo_email_height, custom_domain')
                 .eq('id', orgId)
                 .single();
                 
             orgLogoUrl = orgInfo?.logo_url || undefined;
             orgLogoEmailHeight = orgInfo?.logo_email_height ?? 44;
+            if (orgInfo?.custom_domain) {
+                appUrl = `https://${orgInfo.custom_domain}`;
+            }
         }
 
         const affiliateName = affiliate.name?.split(' ')[0] || 'Partner';
@@ -114,26 +118,26 @@ export async function POST(req: Request) {
             subject = 'You earned a new commission! 💰';
             const amount = Number(record.amount || record.commission_amount || 0).toFixed(2);
             const customerEmail = record.customer_email || record.referred_email || '';
-            htmlContent = NEW_COMMISSION_TEMPLATE(affiliateName, amount, customerEmail, orgLogoUrl, orgLogoEmailHeight);
+            htmlContent = NEW_COMMISSION_TEMPLATE(affiliateName, amount, customerEmail, appUrl, orgLogoUrl, orgLogoEmailHeight);
 
         } else if (eventType === 'new_referral') {
             subject = 'New referral just signed up! 🎉';
             const customerEmail = record.referred_email || record.customer_email || '';
-            htmlContent = NEW_REFERRAL_TEMPLATE(affiliateName, customerEmail, orgLogoUrl, orgLogoEmailHeight);
+            htmlContent = NEW_REFERRAL_TEMPLATE(affiliateName, customerEmail, appUrl, orgLogoUrl, orgLogoEmailHeight);
 
         } else if (eventType === 'payout_generated') {
             subject = 'Your payout has been sent 💸';
             const amount = Number(record.amount || 0).toFixed(2);
-            htmlContent = PAYOUT_GENERATED_TEMPLATE(affiliateName, amount, orgLogoUrl, orgLogoEmailHeight);
+            htmlContent = PAYOUT_GENERATED_TEMPLATE(affiliateName, amount, appUrl, orgLogoUrl, orgLogoEmailHeight);
 
         } else if (eventType === 'account_approved') {
             subject = 'Your affiliate account is approved ✅';
             const referralCode = affiliate.referral_code || undefined;
-            htmlContent = ACCOUNT_APPROVED_TEMPLATE(affiliateName, referralCode, orgLogoUrl, orgLogoEmailHeight);
+            htmlContent = ACCOUNT_APPROVED_TEMPLATE(affiliateName, referralCode, appUrl, orgLogoUrl, orgLogoEmailHeight);
 
         } else if (eventType === 'account_revision') {
             subject = 'Action needed on your affiliate application ⚠️';
-            htmlContent = ACCOUNT_REVISION_TEMPLATE(affiliateName, orgLogoUrl, orgLogoEmailHeight);
+            htmlContent = ACCOUNT_REVISION_TEMPLATE(affiliateName, appUrl, orgLogoUrl, orgLogoEmailHeight);
 
         } else if (eventType === 'test_email') {
             subject = 'Test email from Partner Program ✔';

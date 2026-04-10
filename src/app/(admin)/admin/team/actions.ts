@@ -84,6 +84,7 @@ export async function inviteTeamMember(formData: FormData): Promise<any> {
             `You've been invited to manage the workspace for <b>${orgName}</b>. Click below to securely access the dashboard.`,
             'Access Dashboard',
             linkData.properties.action_link,
+            SITE_URL,
             orgInfo?.logo_url,
             orgInfo?.logo_email_height
         );

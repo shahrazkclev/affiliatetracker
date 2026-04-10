@@ -23,7 +23,7 @@ function logoHeader(logoUrl?: string, logoHeight: number = 44): string {
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared email shell (outer wrapper table, consistent padding & background)
 // ─────────────────────────────────────────────────────────────────────────────
-function emailShell(title: string, logoUrl: string | undefined, body: string, logoHeight: number = 44): string {
+function emailShell(title: string, logoUrl: string | undefined, body: string, appUrl: string = 'https://affiliatemango.com', logoHeight: number = 44): string {
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -47,7 +47,7 @@ function emailShell(title: string, logoUrl: string | undefined, body: string, lo
             <td align="center" style="padding-top:32px;">
               <p style="margin:0;font-size:11px;color:#3f3f46;line-height:1.6;">
                 You're receiving this because you're part of the Partner Program.<br />
-                <a href="https://affiliatemango.com/unsubscribe" style="color:#52525b;text-decoration:underline;">Unsubscribe</a>
+                <a href="${appUrl}/unsubscribe" style="color:#52525b;text-decoration:underline;">Unsubscribe</a>
               </p>
             </td>
           </tr>
@@ -94,6 +94,7 @@ function infoBox(rows: { label: string; value: string }[]): string {
 export const NEW_REFERRAL_TEMPLATE = (
   affiliateName: string,
   customerEmail: string,
+  appUrl: string = 'https://affiliatemango.com',
   logoUrl?: string,
   logoHeight: number = 44
 ) => emailShell(
@@ -107,8 +108,9 @@ export const NEW_REFERRAL_TEMPLATE = (
     { label: 'Customer', value: customerEmail || 'Hidden for privacy' },
     { label: 'Status', value: 'Pending first purchase' },
   ])}
-  ${ctaButton('View in Dashboard →', 'https://affiliatemango.com')}
+  ${ctaButton('View in Dashboard →', appUrl)}
   `,
+  appUrl,
   logoHeight
 );
 
@@ -119,6 +121,7 @@ export const NEW_COMMISSION_TEMPLATE = (
   affiliateName: string,
   amount: string,
   customerEmail?: string,
+  appUrl: string = 'https://affiliatemango.com',
   logoUrl?: string,
   logoHeight: number = 44
 ) => emailShell(
@@ -138,8 +141,9 @@ export const NEW_COMMISSION_TEMPLATE = (
     </tr>
   </table>
   <p style="margin:0 0 0;font-size:13px;line-height:1.6;color:#52525b;">Your earnings will be included in your next payout cycle. Log in to track your balance and referral activity.</p>
-  ${ctaButton('View Commission →', 'https://affiliatemango.com')}
+  ${ctaButton('View Commission →', appUrl)}
   `,
+  appUrl,
   logoHeight
 );
 
@@ -149,6 +153,7 @@ export const NEW_COMMISSION_TEMPLATE = (
 export const PAYOUT_GENERATED_TEMPLATE = (
   affiliateName: string,
   amount: string,
+  appUrl: string = 'https://affiliatemango.com',
   logoUrl?: string,
   logoHeight: number = 44
 ) => emailShell(
@@ -169,8 +174,9 @@ export const PAYOUT_GENERATED_TEMPLATE = (
   ${infoBox([
     { label: 'Status', value: 'Processing — arrives in 1–3 business days' },
   ])}
-  ${ctaButton('View Payout History →', 'https://affiliatemango.com')}
+  ${ctaButton('View Payout History →', appUrl)}
   `,
+  appUrl,
   logoHeight
 );
 
@@ -180,6 +186,7 @@ export const PAYOUT_GENERATED_TEMPLATE = (
 export const ACCOUNT_APPROVED_TEMPLATE = (
   affiliateName: string,
   referralCode?: string,
+  appUrl: string = 'https://affiliatemango.com',
   logoUrl?: string,
   logoHeight: number = 44
 ) => emailShell(
@@ -197,8 +204,9 @@ export const ACCOUNT_APPROVED_TEMPLATE = (
     <li>Earn a commission each time someone purchases using your link</li>
     <li>Track your earnings and request payouts anytime</li>
   </ul>
-  ${ctaButton('Access Dashboard →', 'https://affiliatemango.com')}
+  ${ctaButton('Access Dashboard →', appUrl)}
   `,
+  appUrl,
   logoHeight
 );
 
@@ -207,6 +215,7 @@ export const ACCOUNT_APPROVED_TEMPLATE = (
 // ─────────────────────────────────────────────────────────────────────────────
 export const ACCOUNT_REVISION_TEMPLATE = (
   affiliateName: string,
+  appUrl: string = 'https://affiliatemango.com',
   logoUrl?: string,
   logoHeight: number = 44
 ) => emailShell(
@@ -217,8 +226,9 @@ export const ACCOUNT_REVISION_TEMPLATE = (
   <h1 style="margin:0 0 14px;font-size:26px;font-weight:800;line-height:1.25;color:#fafafa;">Hi ${affiliateName},</h1>
   <p style="margin:0 0 24px;font-size:15px;line-height:1.75;color:#71717a;">We reviewed your affiliate application and need a bit more information before we can approve it.</p>
   <p style="margin:0 0 24px;font-size:15px;line-height:1.75;color:#71717a;">Please log in to your dashboard to see the details and update your application. We'll review it again as soon as you resubmit.</p>
-  ${ctaButton('Update Application →', 'https://affiliatemango.com')}
+  ${ctaButton('Update Application →', appUrl)}
   `,
+  appUrl,
   logoHeight
 );
 
@@ -230,6 +240,7 @@ export const AUTH_LINK_TEMPLATE = (
   preHeaderText: string,
   ctaText: string,
   actionLink: string,
+  appUrl: string = 'https://affiliatemango.com',
   logoUrl?: string,
   logoHeight: number = 44
 ) => emailShell(
@@ -241,5 +252,6 @@ export const AUTH_LINK_TEMPLATE = (
   ${ctaButton(ctaText, actionLink)}
   <p style="margin:30px 0 0;font-size:13px;line-height:1.6;color:#52525b;">If you didn't request this email, you can safely ignore it.</p>
   `,
+  appUrl,
   logoHeight
 );

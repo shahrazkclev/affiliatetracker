@@ -101,6 +101,7 @@ export async function checkLoginStatus(formData: FormData): Promise<{
                 'Welcome! You have been granted access. Click the button below to set up your password and sign in.',
                 'Set Password',
                 linkData.properties.action_link,
+                SITE_URL,
                 logoUrl,
                 logoHeight
             );
@@ -150,6 +151,7 @@ export async function sendMagicLink(formData: FormData): Promise<{ error?: strin
             'Click the button below to securely sign in to your dashboard.',
             'Sign In Instantly',
             linkData.properties.action_link,
+            SITE_URL,
             logoUrl,
             logoHeight
         );
@@ -254,6 +256,7 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
             'Someone requested a password reset for your account. If this was you, click the button below to choose a new password.',
             'Reset Password',
             linkData.properties.action_link,
+            SITE_URL,
             logoUrl,
             logoHeight
         );
