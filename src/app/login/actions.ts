@@ -77,31 +77,36 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         // Link to affiliate row
         await admin.from('affiliates').update({ user_id: created.user.id }).eq('id', affiliate.id);
 
+        const orgId = affiliate?.org_id || await (await import('@/utils/supabase/server')).getResolvedOrgId();
+        let appUrl = SITE_URL;
+        let logoUrl, logoHeight;
+
+        if (orgId) {
+            const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height, custom_domain').eq('id', orgId).maybeSingle();
+            logoUrl = orgInfo?.logo_url;
+            logoHeight = orgInfo?.logo_email_height;
+            if (orgInfo?.custom_domain) {
+                appUrl = `https://${orgInfo.custom_domain}`;
+            }
+        }
+
         // Send password setup email natively using generated link
         const { data: linkData } = await admin.auth.admin.generateLink({
             type: 'recovery',
             email,
-            options: { redirectTo: `${SITE_URL}/auth/callback?next=/reset-password` }
+            options: { redirectTo: `${appUrl}/auth/callback?next=/reset-password` }
         });
 
         if (linkData?.properties?.action_link) {
-            const orgId = affiliate?.org_id || await (await import('@/utils/supabase/server')).getResolvedOrgId();
             const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
             const { dispatchEmail } = await import('@/lib/email');
-            
-            let logoUrl, logoHeight;
-            if (orgId) {
-                const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height').eq('id', orgId).maybeSingle();
-                logoUrl = orgInfo?.logo_url;
-                logoHeight = orgInfo?.logo_email_height;
-            }
             
             const htmlContent = AUTH_LINK_TEMPLATE(
                 'Setup your password',
                 'Welcome! You have been granted access. Click the button below to set up your password and sign in.',
                 'Set Password',
                 linkData.properties.action_link,
-                SITE_URL,
+                appUrl,
                 logoUrl,
                 logoHeight
             );
@@ -126,32 +131,39 @@ export async function sendMagicLink(formData: FormData): Promise<{ error?: strin
     const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
 
     const admin = getAdminClient();
+    
+    // Find custom domain from DB
+    const orgId = await (await import('@/utils/supabase/server')).getResolvedOrgId();
+    let appUrl = SITE_URL;
+    let logoUrl, logoHeight;
+
+    if (orgId) {
+        const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height, custom_domain').eq('id', orgId).maybeSingle();
+        logoUrl = orgInfo?.logo_url;
+        logoHeight = orgInfo?.logo_email_height;
+        if (orgInfo?.custom_domain) {
+            appUrl = `https://${orgInfo.custom_domain}`;
+        }
+    }
+
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'magiclink',
         email,
-        options: { redirectTo: `${SITE_URL}/auth/callback` }
+        options: { redirectTo: `${appUrl}/auth/callback` }
     });
 
     if (linkErr) return { error: linkErr.message };
 
     if (linkData?.properties?.action_link) {
-        const orgId = await (await import('@/utils/supabase/server')).getResolvedOrgId();
         const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
         const { dispatchEmail } = await import('@/lib/email');
         
-        let logoUrl, logoHeight;
-        if (orgId) {
-            const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height').eq('id', orgId).maybeSingle();
-            logoUrl = orgInfo?.logo_url;
-            logoHeight = orgInfo?.logo_email_height;
-        }
-
         const htmlContent = AUTH_LINK_TEMPLATE(
             'Your Magic Link',
             'Click the button below to securely sign in to your dashboard.',
             'Sign In Instantly',
             linkData.properties.action_link,
-            SITE_URL,
+            appUrl,
             logoUrl,
             logoHeight
         );
@@ -231,32 +243,39 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
 
     const admin = getAdminClient();
+    const { data: affiliate } = await admin.from('affiliates').select('org_id').eq('email', email).maybeSingle();
+    const orgId = affiliate?.org_id || await (await import('@/utils/supabase/server')).getResolvedOrgId();
+    
+    let appUrl = SITE_URL;
+    let logoUrl, logoHeight;
+
+    if (orgId) {
+        const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height, custom_domain').eq('id', orgId).maybeSingle();
+        logoUrl = orgInfo?.logo_url;
+        logoHeight = orgInfo?.logo_email_height;
+        if (orgInfo?.custom_domain) {
+            appUrl = `https://${orgInfo.custom_domain}`;
+        }
+    }
+
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'recovery',
         email,
-        options: { redirectTo: `${SITE_URL}/auth/callback?next=/reset-password` }
+        options: { redirectTo: `${appUrl}/auth/callback?next=/reset-password` }
     });
 
     if (linkErr) console.error('[sendPasswordReset] Generate Link Error:', linkErr.message);
 
     if (linkData?.properties?.action_link) {
-        const orgId = await (await import('@/utils/supabase/server')).getResolvedOrgId();
         const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
         const { dispatchEmail } = await import('@/lib/email');
         
-        let logoUrl, logoHeight;
-        if (orgId) {
-            const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height').eq('id', orgId).maybeSingle();
-            logoUrl = orgInfo?.logo_url;
-            logoHeight = orgInfo?.logo_email_height;
-        }
-
         const htmlContent = AUTH_LINK_TEMPLATE(
             'Reset Password',
             'Someone requested a password reset for your account. If this was you, click the button below to choose a new password.',
             'Reset Password',
             linkData.properties.action_link,
-            SITE_URL,
+            appUrl,
             logoUrl,
             logoHeight
         );
