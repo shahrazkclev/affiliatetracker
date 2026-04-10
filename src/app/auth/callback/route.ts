@@ -7,6 +7,8 @@ export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
     const next = searchParams.get('next') ?? '/portal';
+    // return_to is the custom domain to send affiliate back to after password reset
+    const returnTo = searchParams.get('return_to') ?? '';
 
     if (code) {
         const supabase = await createClient();
@@ -15,7 +17,9 @@ export async function GET(request: Request) {
         if (!error && data.user) {
             // Password recovery — go straight to reset page, skip all checks
             if (next === '/reset-password') {
-                return NextResponse.redirect(`${origin}/reset-password`);
+                const resetUrl = new URL(`${origin}/reset-password`);
+                if (returnTo) resetUrl.searchParams.set('return_to', returnTo);
+                return NextResponse.redirect(resetUrl.toString());
             }
 
             const admin = createAdminClient(

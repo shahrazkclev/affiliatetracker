@@ -15,6 +15,11 @@ export default async function PortalHome() {
     // Get signed-in user
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Not logged in → send to login
+    if (!user) {
+        redirect("/login");
+    }
+
     // Identify which Organization Portal is being accessed
     const orgId = await getResolvedOrgId();
 

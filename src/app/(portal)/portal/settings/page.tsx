@@ -9,21 +9,18 @@ import { redirect } from "next/navigation";
 export default async function AffiliateSettingsPage() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
 
     const orgId = await getResolvedOrgId();
     if (!orgId) redirect("/login");
 
     // Fetch the current affiliate's data
-    let affiliate = null;
-    if (user) {
-        const { data } = await supabase
-            .from('affiliates')
-            .select('*')
-            .eq('email', user.email)
-            .eq('org_id', orgId)
-            .single();
-        affiliate = data;
-    }
+    const { data: affiliate } = await supabase
+        .from('affiliates')
+        .select('*')
+        .eq('email', user.email)
+        .eq('org_id', orgId)
+        .single();
 
     // Split name for first/last name fields
     const nameParts = affiliate?.name ? affiliate.name.split(' ') : [];

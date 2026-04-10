@@ -2,6 +2,7 @@ import { PortalSidebar } from "@/components/PortalSidebar";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 
 async function getOrgBranding() {
     try {
@@ -27,6 +28,13 @@ export default async function PortalLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    // ── Auth guard: must be logged in to access any portal page ──────────────
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        redirect("/login");
+    }
+
     const branding = await getOrgBranding();
     const primaryColor = branding?.primary_color ?? "#f59e0b";
     const isLight = branding?.theme === "light";

@@ -13,6 +13,7 @@ export default async function AffiliatePayoutsPage({ searchParams }: { searchPar
     const params = await searchParams;
     const currentPage = Math.max(1, parseInt(params.page || '1', 10));
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
 
     const orgId = await getResolvedOrgId();
     if (!orgId) redirect("/login");
@@ -20,7 +21,7 @@ export default async function AffiliatePayoutsPage({ searchParams }: { searchPar
     const { data: affiliate } = await supabase
         .from('affiliates')
         .select('id, name, payout_email, payout_threshold, total_commission')
-        .eq('email', user?.email ?? '')
+        .eq('email', user.email ?? '')
         .eq('org_id', orgId)
         .maybeSingle();
 

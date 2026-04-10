@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import { FileText, DollarSign, TrendingUp, Clock } from "lucide-react";
 
 export default async function CommissionDetailsPage() {
@@ -6,11 +7,12 @@ export default async function CommissionDetailsPage() {
 
     // Get the currently logged-in affiliate
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
 
     const { data: affiliate } = await supabase
         .from('affiliates')
         .select('id, name, total_commission, total_revenue')
-        .eq('user_id', user?.id)
+        .eq('user_id', user!.id)
         .single();
 
     const { data: commissions } = affiliate

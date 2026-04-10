@@ -80,9 +80,11 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         const orgId = affiliate?.org_id || await (await import('@/utils/supabase/server')).getResolvedOrgId();
         let appUrl = SITE_URL;
         let logoUrl, logoHeight;
+        let orgInfo: { logo_url?: string; logo_email_height?: number; custom_domain?: string } | null = null;
 
         if (orgId) {
-            const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height, custom_domain').eq('id', orgId).maybeSingle();
+            const { data } = await admin.from('organizations').select('logo_url, logo_email_height, custom_domain').eq('id', orgId).maybeSingle();
+            orgInfo = data;
             logoUrl = orgInfo?.logo_url;
             logoHeight = orgInfo?.logo_email_height;
             if (orgInfo?.custom_domain) {
@@ -91,10 +93,12 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         }
 
         // Send password setup email natively using generated link
+        // Encode return_to (custom domain) so the reset page can send them back
+        const returnParam = orgInfo?.custom_domain ? `&return_to=${orgInfo.custom_domain}` : '';
         const { data: linkData } = await admin.auth.admin.generateLink({
             type: 'recovery',
             email,
-            options: { redirectTo: `${appUrl}/auth/callback?next=/reset-password` }
+            options: { redirectTo: `${appUrl}/auth/callback?next=/reset-password${returnParam}` }
         });
 
         if (linkData?.properties?.action_link) {
@@ -248,9 +252,11 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     
     let appUrl = SITE_URL;
     let logoUrl, logoHeight;
+    let orgInfo: { logo_url?: string; logo_email_height?: number; custom_domain?: string } | null = null;
 
     if (orgId) {
-        const { data: orgInfo } = await admin.from('organizations').select('logo_url, logo_email_height, custom_domain').eq('id', orgId).maybeSingle();
+        const { data } = await admin.from('organizations').select('logo_url, logo_email_height, custom_domain').eq('id', orgId).maybeSingle();
+        orgInfo = data;
         logoUrl = orgInfo?.logo_url;
         logoHeight = orgInfo?.logo_email_height;
         if (orgInfo?.custom_domain) {
@@ -261,7 +267,7 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'recovery',
         email,
-        options: { redirectTo: `${appUrl}/auth/callback?next=/reset-password` }
+        options: { redirectTo: `${appUrl}/auth/callback?next=/reset-password${orgInfo?.custom_domain ? `&return_to=${orgInfo.custom_domain}` : ''}` }
     });
 
     if (linkErr) console.error('[sendPasswordReset] Generate Link Error:', linkErr.message);
