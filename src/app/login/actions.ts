@@ -291,3 +291,83 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     return {};
 }
 
+
+/**
+ * OTP Login — generates a magic link, extracts the token, builds our OWN /auth/otp URL,
+ * and sends it via org SMTP (or global SMTP fallback).
+ * Completely bypasses Supabase redirect URL whitelist.
+ */
+export async function sendOtpEmail(formData: FormData): Promise<{ error?: string; sent?: boolean }> {
+    const email = (formData.get('email') as string)?.trim().toLowerCase();
+    if (!email) return { error: 'Email is required.' };
+
+    const admin = getAdminClient();
+
+    const siteHost = await (await import('next/headers')).headers().then(h =>
+        h.get('x-mango-tenant-host') || h.get('x-forwarded-host') || h.get('host') || 'partners.affiliatemango.com'
+    );
+    const isLocal = siteHost.includes('localhost');
+    const SITE_URL = isLocal ? `http://${siteHost}` : `https://${siteHost}`;
+
+    const { getResolvedOrgId } = await import('@/utils/supabase/server');
+    const orgId = await getResolvedOrgId();
+    if (!orgId) return { error: 'Organization not found.' };
+
+    // Check affiliate exists in this org (silent fail to prevent email enumeration)
+    const { data: affiliate } = await admin
+        .from('affiliates')
+        .select('id')
+        .eq('email', email)
+        .eq('org_id', orgId)
+        .maybeSingle();
+
+    if (!affiliate) return { sent: true };
+
+    const { data: orgInfo } = await admin
+        .from('organizations')
+        .select('name, logo_url, logo_email_height, custom_domain')
+        .eq('id', orgId)
+        .maybeSingle();
+
+    const appUrl = orgInfo?.custom_domain ? `https://${orgInfo.custom_domain}` : SITE_URL;
+
+    // Generate Supabase magic link — we only need the token inside
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+        type: 'magiclink',
+        email,
+        options: { redirectTo: 'https://partners.affiliatemango.com/auth/otp' },
+    });
+
+    if (linkErr || !linkData?.properties?.action_link) {
+        console.error('[sendOtpEmail] generateLink error:', linkErr?.message);
+        return { error: 'Could not send login email. Please try again.' };
+    }
+
+    // Extract raw token → build OUR OTP URL (no Supabase redirect chain needed)
+    const rawToken = new URL(linkData.properties.action_link).searchParams.get('token');
+    if (!rawToken) return { error: 'Could not generate login link.' };
+
+    const otpUrl = `https://partners.affiliatemango.com/auth/otp?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(email)}`;
+
+    const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
+    const { dispatchEmail } = await import('@/lib/email');
+
+    const html = AUTH_LINK_TEMPLATE(
+        'Sign in to your account',
+        'Click the button below to securely sign in to your affiliate dashboard. This link is valid for 1 hour and can only be used once.',
+        'Sign In →',
+        otpUrl,
+        appUrl,
+        orgInfo?.logo_url,
+        orgInfo?.logo_email_height
+    );
+
+    await dispatchEmail(orgId, {
+        to: email,
+        subject: 'Your sign-in link',
+        html,
+        _rawHtmlOverride: true,
+    } as any);
+
+    return { sent: true };
+}
