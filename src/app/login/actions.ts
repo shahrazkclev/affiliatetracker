@@ -93,12 +93,11 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         }
 
         // Send password setup email natively using generated link
-        // Encode return_to (custom domain) so the reset page can send them back
         const returnParam = orgInfo?.custom_domain ? `&return_to=${orgInfo.custom_domain}` : '';
         const { data: linkData } = await admin.auth.admin.generateLink({
             type: 'recovery',
             email,
-            options: { redirectTo: `${appUrl}/auth/callback?next=/reset-password${returnParam}` }
+            options: { redirectTo: `https://partners.affiliatemango.com/auth/callback?next=/reset-password` }
         });
 
         if (linkData?.properties?.action_link) {
@@ -153,7 +152,7 @@ export async function sendMagicLink(formData: FormData): Promise<{ error?: strin
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'magiclink',
         email,
-        options: { redirectTo: `${appUrl}/auth/callback` }
+        options: { redirectTo: `https://partners.affiliatemango.com/auth/callback` }
     });
 
     if (linkErr) return { error: linkErr.message };
@@ -267,7 +266,7 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'recovery',
         email,
-        options: { redirectTo: `${appUrl}/auth/callback?next=/reset-password${orgInfo?.custom_domain ? `&return_to=${orgInfo.custom_domain}` : ''}` }
+        options: { redirectTo: `https://partners.affiliatemango.com/auth/callback?next=/reset-password` }
     });
 
     if (linkErr) console.error('[sendPasswordReset] Generate Link Error:', linkErr.message);

@@ -1,31 +1,50 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
     const next = searchParams.get('next') ?? '/portal';
-    // return_to is the custom domain to send affiliate back to after password reset
-    const returnTo = searchParams.get('return_to') ?? '';
+    // return_to may still be passed in some cases, but we also resolve it from DB below
+    const returnToParam = searchParams.get('return_to') ?? '';
 
     if (code) {
         const supabase = await createClient();
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
         if (!error && data.user) {
-            // Password recovery — go straight to reset page, skip all checks
-            if (next === '/reset-password') {
-                const resetUrl = new URL(`${origin}/reset-password`);
-                if (returnTo) resetUrl.searchParams.set('return_to', returnTo);
-                return NextResponse.redirect(resetUrl.toString());
-            }
-
             const admin = createAdminClient(
                 process.env.NEXT_PUBLIC_SUPABASE_URL!,
                 process.env.SUPABASE_SERVICE_ROLE_KEY!
             );
+
+            // Password recovery — look up custom domain from DB and go to reset page
+            if (next === '/reset-password') {
+                // Try param first, then look up from DB using the authenticated user
+                let returnTo = returnToParam;
+
+                if (!returnTo) {
+                    const { data: affiliate } = await admin
+                        .from('affiliates')
+                        .select('org_id')
+                        .eq('email', data.user.email!)
+                        .maybeSingle();
+
+                    if (affiliate?.org_id) {
+                        const { data: org } = await admin
+                            .from('organizations')
+                            .select('custom_domain')
+                            .eq('id', affiliate.org_id)
+                            .maybeSingle();
+                        returnTo = org?.custom_domain ?? '';
+                    }
+                }
+
+                const resetUrl = new URL(`${origin}/reset-password`);
+                if (returnTo) resetUrl.searchParams.set('return_to', returnTo);
+                return NextResponse.redirect(resetUrl.toString());
+            }
 
             // First, check if this is a Platform Owner (Admin)
             const { data: org } = await admin
@@ -48,7 +67,6 @@ export async function GET(request: Request) {
 
             if (!affiliate) {
                 // New user — send to fill in application details
-                // Make sure to preserve query parameters from `next` if it contains them
                 const target = next.startsWith('/apply/details') ? next : '/apply/details';
                 return NextResponse.redirect(`${origin}${target}`);
             }
@@ -71,4 +89,3 @@ export async function GET(request: Request) {
 
     return NextResponse.redirect(`${origin}/login?error=Could not sign in`);
 }
-

@@ -24,6 +24,34 @@ export default function LoginPage() {
         }
     }, []);
 
+    // Handle Supabase implicit flow hash tokens (fallback when PKCE fails)
+    // e.g. /login#access_token=xxx&type=recovery
+    useEffect(() => {
+        const hash = window.location.hash;
+        if (!hash || !hash.includes('access_token')) return;
+
+        const params = new URLSearchParams(hash.replace('#', ''));
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const type = params.get('type');
+
+        if (!accessToken || !refreshToken) return;
+
+        // Set the session in the Supabase client, then redirect appropriately
+        import('@/utils/supabase/client').then(({ createClient }) => {
+            const supabase = createClient();
+            supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(() => {
+                // Clear the hash so it doesn't loop
+                window.history.replaceState(null, '', window.location.pathname);
+                if (type === 'recovery') {
+                    window.location.href = '/reset-password';
+                } else {
+                    window.location.href = '/portal';
+                }
+            });
+        });
+    }, []);
+
     const applyLink = isDashboard ? "/apply" : "https://partners.affiliatemango.com/apply";
 
     async function handleEmailCheck(e: React.FormEvent<HTMLFormElement>) {
