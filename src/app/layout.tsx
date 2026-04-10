@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from "@/components/ui/sonner";
+import { AuthHashHandler } from "@/components/AuthHashHandler";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,6 +32,7 @@ export default function RootLayout({
           shadow="0 0 10px #f97316,0 0 5px #f97316"
         />
         <Toaster />
+        <AuthHashHandler />
         {children}
       </body>
     </html>
