@@ -32,6 +32,7 @@ export default async function GlobalSettingsPage() {
     const { data: org, error: orgError } = await supabase
         .from('organizations')
         .select(`
+            id,
             payout_notification_email, 
             custom_domain, 
             smtp_host, 
