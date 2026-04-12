@@ -13,7 +13,7 @@ type Step = 'email' | 'otp' | 'password' | 'reset-sent';
 export default function LoginPage() {
     const [step, setStep] = useState<Step>('email');
     const [email, setEmail] = useState('');
-    const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+    const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '', '', '']);
     const [error, setError] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
     const [isDashboard, setIsDashboard] = useState(false);
@@ -86,11 +86,11 @@ export default function LoginPage() {
         const next = [...otpDigits];
         next[index] = digit;
         setOtpDigits(next);
-        if (digit && index < 5) {
+        if (digit && index < 7) {
             otpRefs.current[index + 1]?.focus();
         }
         // Auto-submit when all filled
-        if (digit && next.every(d => d !== '') && index === 5) {
+        if (digit && next.every(d => d !== '') && index === 7) {
             submitOtp(next.join(''));
         }
     }
@@ -102,10 +102,10 @@ export default function LoginPage() {
     }
 
     function handleOtpPaste(e: React.ClipboardEvent) {
-        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-        if (pasted.length === 6) {
+        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 8);
+        if (pasted.length === 8) {
             setOtpDigits(pasted.split(''));
-            otpRefs.current[5]?.focus();
+            otpRefs.current[7]?.focus();
             submitOtp(pasted);
         }
         e.preventDefault();
@@ -120,7 +120,7 @@ export default function LoginPage() {
             const result = await verifyOtpCode(fd);
             if (result?.error) {
                 setError(result.error);
-                setOtpDigits(['', '', '', '', '', '']);
+                setOtpDigits(['', '', '', '', '', '', '', '']);
                 setTimeout(() => otpRefs.current[0]?.focus(), 50);
             }
         });
@@ -128,7 +128,7 @@ export default function LoginPage() {
 
     async function handleResendOtp() {
         setError(null);
-        setOtpDigits(['', '', '', '', '', '']);
+        setOtpDigits(['', '', '', '', '', '', '', '']);
         startTransition(async () => {
             const fd = new FormData();
             fd.set('email', email);
@@ -171,7 +171,7 @@ export default function LoginPage() {
                         </CardTitle>
                         <CardDescription className="text-zinc-400 mt-1">
                             {step === 'email' && 'Enter your email to continue'}
-                            {step === 'otp' && `We sent a 6-digit code to ${email}`}
+                            {step === 'otp' && `We sent a 8-digit code to ${email}`}
                             {step === 'password' && email}
                             {step === 'reset-sent' && 'Password reset link sent'}
                         </CardDescription>
@@ -205,7 +205,7 @@ export default function LoginPage() {
                     {/* ── OTP code entry ────────────────────────────────── */}
                     {step === 'otp' && (
                         <div className="space-y-5">
-                            <div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
+                            <div className="flex gap-1 sm:gap-2 justify-center" onPaste={handleOtpPaste}>
                                 {otpDigits.map((digit, i) => (
                                     <input
                                         key={i}
@@ -217,7 +217,7 @@ export default function LoginPage() {
                                         onChange={e => handleOtpChange(i, e.target.value)}
                                         onKeyDown={e => handleOtpKeyDown(i, e)}
                                         disabled={isPending}
-                                        className="w-11 h-14 text-center text-2xl font-bold font-mono bg-zinc-950 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors disabled:opacity-50"
+                                        className="w-9 h-12 sm:w-10 sm:h-14 text-center text-xl sm:text-2xl font-bold font-mono bg-zinc-950 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors disabled:opacity-50"
                                     />
                                 ))}
                             </div>
@@ -227,7 +227,7 @@ export default function LoginPage() {
                                 </div>
                             )}
                             <div className="flex items-center justify-between pt-1">
-                                <button type="button" onClick={() => { setStep('email'); setError(null); setOtpDigits(['','','','','','']); }}
+                                <button type="button" onClick={() => { setStep('email'); setError(null); setOtpDigits(['','','','','','','','']); }}
                                     className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
                                     ← Wrong email
                                 </button>
