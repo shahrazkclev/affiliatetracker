@@ -14,7 +14,7 @@ export async function OPTIONS() {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { code, url, referrer } = body;
+        const { orgId, code, url, referrer } = body;
 
         if (!code) {
             return NextResponse.json({ success: false, error: 'No code provided' }, { status: 400, headers: corsHeaders });
@@ -30,11 +30,16 @@ export async function POST(req: Request) {
         );
 
         // Find the affiliate by referral code
-        const { data: affiliate } = await admin
+        let query = admin
             .from('affiliates')
             .select('id, clicks')
-            .eq('referral_code', refCode)
-            .single();
+            .eq('referral_code', refCode);
+            
+        if (orgId) {
+            query = query.eq('org_id', orgId);
+        }
+        
+        const { data: affiliate } = await query.limit(1).single();
 
         if (!affiliate) {
             return NextResponse.json({ success: false, error: 'Affiliate not found' }, { status: 404, headers: corsHeaders });
@@ -59,14 +64,15 @@ export async function POST(req: Request) {
             console.error('Failed to log click event:', insertError);
         }
 
-        // 2. Increment global clicks on the affiliate
         const currentClicks = affiliate.clicks || 0;
         await admin
             .from('affiliates')
             .update({ clicks: currentClicks + 1 })
             .eq('id', affiliate.id);
 
-        return NextResponse.json({ success: true }, { headers: corsHeaders });
+        const tracking_payload = `${refCode}---${tag || 'default'}---${affiliate.id}`;
+
+        return NextResponse.json({ success: true, tracking_payload }, { headers: corsHeaders });
 
     } catch (error) {
         console.error('Error tracking click:', error);

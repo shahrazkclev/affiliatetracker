@@ -5,7 +5,7 @@ import { Code, Terminal } from "lucide-react";
 import { CopyButton } from "@/components/CopyButton";
 import { motion } from "framer-motion";
 
-export function TrackingSnippetCard({ portalUrl }: { portalUrl: string }) {
+export function TrackingSnippetCard({ portalUrl, orgId }: { portalUrl: string, orgId?: string }) {
     const trackingSnippetCode = `<!-- Affiliate Tracking Script -->
 <script>
 (function () {
@@ -17,7 +17,8 @@ export function TrackingSnippetCard({ portalUrl }: { portalUrl: string }) {
     ttlDays: 30,
     debug: false,
     trackClickUrl: '${portalUrl}/api/track-click',
-    trackClickEnabled: true
+    trackClickEnabled: true,
+    orgId: '${orgId || ''}'
   };
 
   function log() {
@@ -60,12 +61,21 @@ export function TrackingSnippetCard({ portalUrl }: { portalUrl: string }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        orgId: CONFIG.orgId,
         code: code,
         url: window.location.href,
         referrer: document.referrer
       }),
       keepalive: true,
-    }).catch(function () {});
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.tracking_payload) {
+            storeReferralCode(data.tracking_payload);
+            updateStripeLinks(data.tracking_payload);
+        }
+    })
+    .catch(function () {});
   }
 
   function observe(code) {

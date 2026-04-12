@@ -78,7 +78,7 @@ export default async function GlobalSettingsPage() {
                 <StripeConnectCard />
                 
                 {/* ── Tracking Snippet ───────────────────────────────────────── */}
-                <TrackingSnippetCard portalUrl={portalUrl} />
+                <TrackingSnippetCard portalUrl={portalUrl} orgId={org?.id} />
 
                 {/* ── Payout Notification Email ─────────────────────────────────── */}
                 <PayoutEmailCard currentEmail={org?.payout_notification_email || null} />

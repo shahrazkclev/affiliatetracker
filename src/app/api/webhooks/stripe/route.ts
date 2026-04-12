@@ -112,28 +112,46 @@ export async function POST(req: NextRequest) {
 
 async function handleCheckoutSession(supabase: any, org: any, session: any) {
     // client_reference_id is set by the tracking snippet to the affiliate's ref code
-    const refCode = session.client_reference_id;
+    // It may now be a tracking payload: "refCode---tag---uuid"
+    const rawRefCode = session.client_reference_id;
     const amount  = (session.amount_total || 0) / 100; // Stripe returns cents
     const currency = session.currency || 'usd';
     const stripeChargeId = session.payment_intent || session.id;
     // 100% free checkouts might drop the customer_details email, fallback to a placeholder so it doesn't violate NOT NULL constraints
     const customerEmail = session.customer_details?.email || session.customer_email || `unknown_${session.id}@stripe.com`;
 
-    if (!refCode) {
+    if (!rawRefCode) {
         console.log('[webhook] checkout.session.completed — no client_reference_id, skipping commission');
         return;
     }
 
-    // Find affiliate by referral_code
-    const { data: affiliate } = await supabase
+    let refCode = rawRefCode;
+    let explicitAffiliateId = null;
+
+    if (rawRefCode.includes('---')) {
+        const parts = rawRefCode.split('---');
+        refCode = parts[0];
+        if (parts.length >= 3) {
+            explicitAffiliateId = parts[2];
+        }
+    }
+
+    // Find affiliate by referral_code or explicit ID
+    let query = supabase
         .from('affiliates')
         .select('id, campaign_id, total_commission')
-        .eq('referral_code', refCode)
-        .eq('org_id', org.id)
-        .single();
+        .eq('org_id', org.id);
+
+    if (explicitAffiliateId) {
+        query = query.eq('id', explicitAffiliateId);
+    } else {
+        query = query.eq('referral_code', refCode);
+    }
+
+    const { data: affiliate } = await query.single();
 
     if (!affiliate) {
-        console.warn(`[webhook] No affiliate found for ref code: ${refCode}`);
+        console.warn(`[webhook] No affiliate found for ref code: ${rawRefCode}`);
         return;
     }
 
