@@ -30,110 +30,44 @@ export default async function ReferralsPage({
     const searchQuery = (params.q || "").trim();
     const statusFilter = params.status || "all";
 
-    // Summary counts — always global
-    const [{ count: totalCount }, { count: paidCount }, { count: pendingCount }] = await Promise.all([
-        supabase.from("referrals").select("*", { count: "exact", head: true }).eq("org_id", orgId),
-        supabase.from("referrals").select("*", { count: "exact", head: true }).eq("status", "paid").eq("org_id", orgId),
-        supabase.from("referrals").select("*", { count: "exact", head: true }).eq("status", "pending").eq("org_id", orgId),
+    // Fetch global datasets for in-memory status resolution
+    const [
+        { data: allRawReferrals },
+        { data: affiliatesData },
+        { data: allCommissions },
+        { data: allPayouts }
+    ] = await Promise.all([
+        supabase.from("referrals").select("*").eq("org_id", orgId).order("created_at", { ascending: false }).limit(10000),
+        supabase.from("affiliates").select("*").eq("org_id", orgId).limit(5000),
+        supabase.from("commissions").select("amount, revenue, customer_email, status, affiliate_id, created_at, referral_id").eq("org_id", orgId).limit(10000),
+        supabase.from("payouts").select("affiliate_id, created_at").eq("org_id", orgId).limit(10000)
     ]);
-
-    const tabCounts = {
-        all: totalCount ?? 0,
-        paid: paidCount ?? 0,
-        pending: pendingCount ?? 0,
-    };
-
-    // Affiliate ID lookup for search
-    let affiliateIds: string[] | null = null;
-    if (searchQuery) {
-        const { data: matchingAffiliates } = await supabase
-            .from("affiliates")
-            .select("id")
-            .eq("org_id", orgId)
-            .or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
-        affiliateIds = matchingAffiliates?.map((a) => a.id) ?? [];
-    }
-
-    // Main referrals query (no embedded join — referrals.affiliate_id has no FK)
-    let query = supabase
-        .from("referrals")
-        .select("*", { count: "exact" })
-        .eq("org_id", orgId)
-        .order("created_at", { ascending: false });
-
-    if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
-    }
-
-    if (searchQuery) {
-        const orClauses = [
-            `customer_email.ilike.%${searchQuery}%`,
-            `referred_email.ilike.%${searchQuery}%`,
-            `stripe_customer_id.ilike.%${searchQuery}%`,
-        ];
-        if (affiliateIds && affiliateIds.length > 0) {
-            orClauses.push(`affiliate_id.in.(${affiliateIds.join(",")})`);
-        }
-        query = query.or(orClauses.join(","));
-    }
-
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const { data: rawReferrals, error, count: filteredCount } = await query.range(start, start + PAGE_SIZE - 1);
-
-    // Step 2: fetch affiliates for this page's referrals
-    const uniqueAffIds = [...new Set((rawReferrals || []).map((r: any) => r.affiliate_id).filter(Boolean))];
-    const { data: affiliatesData } = uniqueAffIds.length > 0
-        ? await supabase.from("affiliates").select("*").in("id", uniqueAffIds)
-        : { data: [] };
-
 
     const affMap: Record<string, any> = {};
     for (const a of affiliatesData || []) affMap[a.id] = a;
 
-    // Step 3: Fetch commissions for these referrals
-    const emails = (rawReferrals || [])
-        .map(r => r.customer_email || r.referred_email)
-        .filter(Boolean);
-
-    let commsData: any[] = [];
-    if (emails.length > 0) {
-        // We match commissions by customer_email or referral_id
-        const { data: commissionsData } = await supabase
-            .from('commissions')
-            .select('amount, revenue, customer_email, status, affiliate_id, created_at, referral_id')
-            .eq('org_id', orgId)
-            .in('customer_email', emails);
-        commsData = commissionsData || [];
-    }
-
-    // Fetch payouts only for the affiliates we are rendering!
-    const { data: payoutsData } = uniqueAffIds.length > 0 
-        ? await supabase.from('payouts').select('affiliate_id, created_at').in('affiliate_id', uniqueAffIds)
-        : { data: [] };
-
+    // Precompute payout mappings
     const payoutMap: Record<string, Date[]> = {};
-    for (const p of payoutsData || []) {
+    for (const p of allPayouts || []) {
         if (!payoutMap[p.affiliate_id]) payoutMap[p.affiliate_id] = [];
         payoutMap[p.affiliate_id].push(new Date(p.created_at));
     }
 
-    const commsWithStatus = commsData.map(c => {
+    const commsWithStatus = (allCommissions || []).map(c => {
         const dates = payoutMap[c.affiliate_id] || [];
         const commDate = new Date(c.created_at);
         const settled = dates.some(pd => pd >= commDate);
         return { ...c, effectiveStatus: settled ? 'paid' : (c.status || 'pending') };
     });
 
-    const referrals = (rawReferrals || []).map((r: any) => {
+    // Resolve dynamic statuses for ALL referrals
+    let processedReferrals = (allRawReferrals || []).map((r: any) => {
         const email = r.customer_email || r.referred_email;
-        // Find all commissions matching precisely this referral row
         const userComms = commsWithStatus.filter(c => {
             if (c.referral_id) return c.referral_id === r.id;
-            // Legacy fallback if referral_id wasn't attached
             return c.customer_email?.toLowerCase() === email?.toLowerCase() && c.affiliate_id === r.affiliate_id;
         });
         
-        // Sum up ONLY this referral's isolated commission events
         const totalCommission = userComms.reduce((acc, c) => acc + Number(c.amount || 0), 0);
         const totalRevenue = userComms.reduce((acc, c) => acc + Number(c.revenue || 0), 0);
 
@@ -150,13 +84,44 @@ export default async function ReferralsPage({
         };
     });
 
+    // Capture tab counts explicitly against the fully resolved statuses
+    const tabCounts = {
+        all: processedReferrals.length,
+        paid: processedReferrals.filter(r => r.status === 'paid').length,
+        pending: processedReferrals.filter(r => r.status === 'pending').length,
+    };
+
+    // Filter by Status Tab
+    if (statusFilter !== "all") {
+        processedReferrals = processedReferrals.filter(r => r.status === statusFilter);
+    }
+
+    // Filter by Search
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        processedReferrals = processedReferrals.filter(r => {
+            return (
+                r.customer_email?.toLowerCase().includes(q) ||
+                r.referred_email?.toLowerCase().includes(q) ||
+                r.stripe_customer_id?.toLowerCase().includes(q) ||
+                r.affiliate?.name?.toLowerCase().includes(q) ||
+                r.affiliate?.email?.toLowerCase().includes(q)
+            );
+        });
+    }
+
+    const filteredCount = processedReferrals.length;
+    const displayTotal = filteredCount;
+
+    // Slice for Pagination
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const referrals = processedReferrals.slice(start, start + PAGE_SIZE);
+
     // Step 4: Fetch campaigns for the Actions cell
     const { data: campaigns } = await supabase.from('campaigns').select('*').eq('org_id', orgId);
 
     // Step 5: Fetch all affiliates for the manual referral dropdown
-    const { data: allAffiliates } = await supabase.from('affiliates').select('id, name, email').eq('org_id', orgId).order('created_at', { ascending: false }).limit(500);
-
-    const displayTotal = filteredCount ?? 0;
+    const allAffiliates = affiliatesData || [];
 
 
     return (
@@ -187,7 +152,7 @@ export default async function ReferralsPage({
                     </CardHeader>
                     <CardContent>
                         <div className="text-4xl font-bold text-zinc-100 font-mono tracking-tight drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">
-                            {totalCount ?? 0}
+                            {tabCounts.all ?? 0}
                         </div>
                     </CardContent>
                 </Card>
@@ -200,7 +165,7 @@ export default async function ReferralsPage({
                     </CardHeader>
                     <CardContent>
                         <div className="text-4xl font-bold text-emerald-400 font-mono tracking-tight">
-                            {paidCount ?? 0}{" "}
+                            {tabCounts.paid ?? 0}{" "}
                             <span className="text-sm font-sans tracking-widest text-zinc-500 uppercase">Referrals</span>
                         </div>
                     </CardContent>
@@ -250,9 +215,7 @@ export default async function ReferralsPage({
                             {(referrals ?? []).length === 0 && (
                                 <tr>
                                     <td colSpan={5} className="px-6 py-12 text-center text-zinc-500 font-mono text-xs uppercase tracking-widest bg-zinc-950/30">
-                                        {error
-                                            ? "Error fetching referrals."
-                                            : searchQuery
+                                        {searchQuery
                                             ? `No referrals matching "${searchQuery}".`
                                             : "No referrals yet."}
                                     </td>
