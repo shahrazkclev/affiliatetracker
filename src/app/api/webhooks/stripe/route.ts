@@ -127,10 +127,14 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
 
     let refCode = rawRefCode;
     let explicitAffiliateId = null;
+    let trackingTag = null;
 
     if (rawRefCode.includes('---')) {
         const parts = rawRefCode.split('---');
         refCode = parts[0];
+        if (parts.length >= 2 && parts[1]) {
+            trackingTag = parts[1];
+        }
         if (parts.length >= 3) {
             explicitAffiliateId = parts[2];
         }
@@ -188,6 +192,7 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
                 customer_email: customerEmail,
                 stripe_customer_id: session.customer || null,
                 status: 'pending',
+                sub_id: trackingTag,
                 created_at: new Date().toISOString(),
             }).select('id').single();
 
@@ -211,6 +216,7 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
         amount: commissionAmount,
         stripe_charge_id: stripeChargeId,
         status: 'pending',
+        sub_id: trackingTag,
         created_at: new Date().toISOString(),
     });
 

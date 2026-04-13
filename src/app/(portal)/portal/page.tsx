@@ -38,7 +38,7 @@ export default async function PortalHome() {
     // Commissions for this affiliate
     const { data: commissions } = await supabase
         .from('commissions')
-        .select('amount, status, created_at')
+        .select('amount, revenue, status, sub_id, created_at')
         .eq('affiliate_id', affiliate?.id ?? '')
         .order('created_at', { ascending: false });
 
@@ -52,7 +52,7 @@ export default async function PortalHome() {
     // Referrals for this affiliate
     const { data: referrals } = await supabase
         .from('referrals')
-        .select('id, status, created_at')
+        .select('id, status, sub_id, created_at')
         .eq('affiliate_id', affiliate?.id ?? '');
 
     // Clicks grouped by tag
@@ -66,6 +66,23 @@ export default async function PortalHome() {
         if (!c.sub_id) continue;
         const tag = c.sub_id.toLowerCase().replace(/[^a-z0-9_-]/g, '').trim();
         clickCounts[tag] = (clickCounts[tag] || 0) + 1;
+    }
+
+    const tagAnalytics: Record<string, { referrals: number; revenue: number; commissions: number }> = {};
+    
+    for (const r of referrals || []) {
+        if (!r.sub_id) continue;
+        const tag = r.sub_id.toLowerCase().replace(/[^a-z0-9_-]/g, '').trim();
+        if (!tagAnalytics[tag]) tagAnalytics[tag] = { referrals: 0, revenue: 0, commissions: 0 };
+        tagAnalytics[tag].referrals += 1;
+    }
+
+    for (const c of commissions || []) {
+        if (!c.sub_id) continue;
+        const tag = c.sub_id.toLowerCase().replace(/[^a-z0-9_-]/g, '').trim();
+        if (!tagAnalytics[tag]) tagAnalytics[tag] = { referrals: 0, revenue: 0, commissions: 0 };
+        tagAnalytics[tag].revenue += Number(c.revenue || 0);
+        tagAnalytics[tag].commissions += Number(c.amount || 0);
     }
 
     // Compute stats
@@ -106,6 +123,8 @@ export default async function PortalHome() {
                 refCode={refCode} 
                 affiliateId={affiliate?.id || ''} 
                 clickCounts={clickCounts}
+                tagAnalytics={tagAnalytics}
+                initialLinks={affiliate?.custom_tracking_links || []}
             />
 
             {/* Stats */}

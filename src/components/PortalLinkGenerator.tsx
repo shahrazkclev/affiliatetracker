@@ -23,13 +23,17 @@ export function PortalLinkGenerator({
     refCode,
     affiliateId,
     clickCounts = {},
+    tagAnalytics = {},
+    initialLinks = [],
 }: {
     baseUrl: string;
     refCode: string;
     affiliateId: string;
     clickCounts?: Record<string, number>;
+    tagAnalytics?: Record<string, { referrals: number; revenue: number; commissions: number }>;
+    initialLinks?: TrackingLink[];
 }) {
-    const [links, setLinks] = useState<TrackingLink[]>([]);
+    const [links, setLinks] = useState<TrackingLink[]>(initialLinks);
     const [isOpen, setIsOpen] = useState(false);
     const [platform, setPlatform] = useState('YouTube');
     const [label, setLabel] = useState('');
@@ -38,23 +42,12 @@ export function PortalLinkGenerator({
     const [isSaving, setIsSaving] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
 
-    // Load saved links from DB on mount
+    // Sync if initialLinks changes from server
     useEffect(() => {
-        if (!affiliateId) return;
-        const supabase = createClient();
-        supabase
-            .from('affiliates')
-            .select('custom_tracking_links')
-            .eq('id', affiliateId)
-            .single()
-            .then(({ data, error }) => {
-                if (error) { setLoadError('Could not load saved links.'); return; }
-                const saved = data?.custom_tracking_links;
-                if (Array.isArray(saved) && saved.length > 0) {
-                    setLinks(saved.map((l: Omit<TrackingLink, 'copied'>) => ({ ...l, copied: false })));
-                }
-            });
-    }, [affiliateId]);
+        if (initialLinks && initialLinks.length > 0) {
+            setLinks(initialLinks.map((l: Omit<TrackingLink, 'copied'>) => ({ ...l, copied: false })));
+        }
+    }, [initialLinks]);
 
     async function persistLinks(updated: TrackingLink[]) {
         if (!affiliateId) return;
@@ -69,9 +62,23 @@ export function PortalLinkGenerator({
     }
 
     function buildUrl(target: string, tag: string) {
-        const base = target || baseUrl;
+        let base = target || baseUrl;
+        
+        // Strip any existing via parameter to prevent duplicates
+        try {
+            const urlObj = new URL(base.startsWith('http') ? base : `https://${base}`);
+            urlObj.searchParams.delete('via');
+            base = urlObj.toString();
+        } catch(e) {
+            // fallback if URL parsing fails
+            base = base.replace(/[?&]via=[^&]*/g, '');
+        }
+
         const sep = base.includes('?') ? '&' : '?';
         const safeTag = tag.toLowerCase().replace(/[^a-z0-9_-]/g, '').trim();
+        // The webhook parses `refCode---tag---uuid` (the backend uses + replacing to splits). 
+        // We will encode it as `refCode+tag` because track-click route reads `code.replace(/ /g, '+').split('+')`
+        // Then the JS snippet sends it to Stripe.
         const viaValue = safeTag ? `${refCode}%2B${safeTag}` : refCode;
         return `${base}${sep}via=${viaValue}`;
     }
@@ -221,6 +228,7 @@ export function PortalLinkGenerator({
                         {links.map(link => {
                             const tag = link.label.toLowerCase().replace(/[^a-z0-9_-]/g, '').trim();
                             const clicks = clickCounts[tag] || 0;
+                            const stats = tagAnalytics[tag] || { referrals: 0, revenue: 0, commissions: 0 };
                             return (
                                 <div key={link.id} className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 rounded-lg px-3 py-2 group">
                                     <div className="flex-1 min-w-0">
@@ -230,6 +238,16 @@ export function PortalLinkGenerator({
                                             <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono border ${clicks > 0 ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-zinc-800 text-zinc-500 border-zinc-700'}`}>
                                                 {clicks} Clicks
                                             </span>
+                                            {stats.referrals > 0 && (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded font-mono border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                                    {stats.referrals} Signups
+                                                </span>
+                                            )}
+                                            {stats.revenue > 0 && (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded font-mono border bg-amber-500/10 text-amber-400 border-amber-500/20">
+                                                    Rev: ${stats.revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="font-mono text-[10px] text-indigo-400 truncate">{link.fullUrl}</p>
                                     </div>

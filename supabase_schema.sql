@@ -46,6 +46,7 @@ CREATE TABLE referrals (
     customer_email TEXT NOT NULL,
     stripe_customer_id TEXT,
     status TEXT DEFAULT 'trialing', -- 'trialing', 'paying', etc.
+    sub_id TEXT, -- Custom tracking tag
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -59,6 +60,7 @@ CREATE TABLE commissions (
     revenue DECIMAL NOT NULL, -- Total revenue from the charge
     commission_amount DECIMAL NOT NULL, -- Calculated commission
     status TEXT DEFAULT 'pending', -- 'pending' (Not Paid Out), 'paid' (Paid Out)
+    sub_id TEXT, -- Custom tracking tag
     paid_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
