@@ -342,30 +342,44 @@ export async function createManualCommission(formData: FormData) {
         
     if (!affiliate) return { success: false, error: 'Affiliate not found' };
 
-    // 1. Insert a referral row so it appears in the Referrals table
-    const { data: referral, error: referralError } = await supabase
+    // 1. Lookup a referral row so it appears in the Referrals table if it exists
+    let referralId: string;
+    const { data: existingRef } = await supabase
         .from('referrals')
-        .insert({
-            org_id: affiliate.org_id,
-            affiliate_id,
-            customer_email,
-            status: 'active',
-        })
         .select('id')
+        .eq('customer_email', customer_email)
+        .eq('affiliate_id', affiliate_id)
+        .limit(1)
         .single();
+        
+    if (existingRef) {
+        referralId = existingRef.id;
+    } else {
+        const { data: referral, error: referralError } = await supabase
+            .from('referrals')
+            .insert({
+                org_id: affiliate.org_id,
+                affiliate_id,
+                customer_email,
+                status: 'pending',
+            })
+            .select('id')
+            .single();
 
-    if (referralError) {
-        console.error('Error creating referral for manual commission:', referralError);
-        return { success: false, error: referralError.message };
+        if (referralError) {
+            console.error('Error creating referral for manual commission:', referralError);
+            return { success: false, error: referralError.message };
+        }
+        referralId = referral.id;
     }
 
-    // 2. Insert the commission, linked to the new referral
+    // 2. Insert the commission, linked to the referral
     const { error: commError } = await supabase
         .from('commissions')
         .insert({
             org_id: affiliate.org_id,
             affiliate_id,
-            referral_id: referral.id,
+            referral_id: referralId,
             amount,
             commission_amount: amount,
             revenue: amount / 0.3,

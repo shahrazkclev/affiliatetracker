@@ -43,25 +43,28 @@ export default async function TeamSettingsPage() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto py-12 px-6 font-sans">
-            <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
-                    <Users className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Team Management</h1>
-                    <p className="text-sm text-zinc-400 font-medium tracking-wide">Invite administrators and operators to your workspace.</p>
+        <div className="space-y-6 w-full max-w-full font-sans pb-12">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
+                        <Users className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">Team Management</h1>
+                        <p className="text-sm text-zinc-400 font-medium tracking-wide">Invite administrators and operators to your workspace.</p>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="md:col-span-2 space-y-6">
-                    <Card className="bg-zinc-900 rounded-2xl border-zinc-800 shadow-xl overflow-hidden">
-                        <CardHeader className="bg-zinc-950/50 border-b border-zinc-800/80 px-6 py-5">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+                <div className="xl:col-span-2 space-y-6">
+                    <Card className="bg-zinc-900 rounded-2xl border border-zinc-800/80 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+                        <CardHeader className="bg-zinc-950/30 border-b border-zinc-800/50 px-6 py-5">
                             <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
                                 Active Members
                             </CardTitle>
-                            <CardDescription className="text-zinc-400">Users with access to this organization.</CardDescription>
+                            <CardDescription className="text-zinc-400">Users with administrative access to this organization.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-zinc-800">
@@ -97,14 +100,15 @@ export default async function TeamSettingsPage() {
                 </div>
 
                 <div>
-                    <Card className="bg-zinc-900 rounded-2xl border-zinc-800 shadow-xl overflow-hidden border-t-2 border-t-orange-500">
-                        <CardHeader className="px-6 py-5">
+                    <Card className="bg-zinc-900 rounded-2xl border border-zinc-800/80 shadow-2xl overflow-hidden border-t-2 border-t-orange-500 relative group z-10 sticky top-6">
+                        <div className="absolute top-0 left-0 w-full h-full bg-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                        <CardHeader className="px-6 py-5 border-b border-zinc-800/30">
                             <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-                                <UserPlus className="w-4 h-4" />
+                                <UserPlus className="w-4 h-4 text-orange-400" />
                                 Invite User
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="px-6 pb-6 pt-0">
+                        <CardContent className="px-6 pb-6 pt-5">
                             {isOwner ? (
                                 <form action={inviteTeamMember} className="space-y-4">
                                     <div>

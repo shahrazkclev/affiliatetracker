@@ -8,6 +8,7 @@ export async function createManualReferral(data: {
     customer_email: string;
     revenue?: number;
     commission?: number;
+    isPercentage?: boolean;
 }) {
     const supabase = await createClient();
 
@@ -29,31 +30,49 @@ export async function createManualReferral(data: {
     const commissionRate = (affiliate as any).campaigns?.default_commission_percent || 0;
 
     try {
-        // 2. Insert Referral
-        const { data: referral, error: referralError } = await supabase
+        // 2. Lookup existing Referral
+        let referralId: string;
+        const { data: existingRef } = await supabase
             .from('referrals')
-            .insert({
-                affiliate_id: data.affiliate_id,
-                org_id: affiliate.org_id,
-                customer_email: data.customer_email,
-                status: 'active'
-            })
-            .select()
+            .select('id')
+            .eq('customer_email', data.customer_email)
+            .eq('affiliate_id', data.affiliate_id)
+            .limit(1)
             .single();
 
-        if (referralError) {
-            console.error('Error creating referral:', referralError);
-            return { success: false, error: referralError.message };
+        if (existingRef) {
+            referralId = existingRef.id;
+        } else {
+            // Insert new Referral matching Stripe default status 'pending'
+            const { data: referral, error: referralError } = await supabase
+                .from('referrals')
+                .insert({
+                    affiliate_id: data.affiliate_id,
+                    org_id: affiliate.org_id,
+                    customer_email: data.customer_email,
+                    status: 'pending' // Stripe inserts pending until actually paid
+                })
+                .select('id')
+                .single();
+
+            if (referralError) {
+                console.error('Error creating referral:', referralError);
+                return { success: false, error: referralError.message };
+            }
+            referralId = referral.id;
         }
 
         // 3. Insert Commission if applicable
         const hasRevenue = typeof data.revenue === 'number';
-        const hasCommission = typeof data.commission === 'number';
+        const hasCommissionInput = typeof data.commission === 'number';
 
-        if (hasRevenue || hasCommission) {
-            const amount = hasCommission 
-                ? data.commission! 
-                : (hasRevenue ? (data.revenue! * (commissionRate / 100)) : 0);
+        if (hasRevenue || hasCommissionInput) {
+            let amount = 0;
+            if (hasCommissionInput) {
+                amount = data.isPercentage && data.revenue ? (data.revenue * (data.commission! / 100)) : data.commission!;
+            } else if (hasRevenue) {
+                amount = data.revenue! * (commissionRate / 100);
+            }
 
             const mockStripeChargeId = `manual_charge_${crypto.randomUUID()}`;
 
@@ -62,11 +81,12 @@ export async function createManualReferral(data: {
                 .insert({
                     affiliate_id: data.affiliate_id,
                     org_id: affiliate.org_id,
-                    referral_id: referral.id,
+                    referral_id: referralId,
                     stripe_charge_id: mockStripeChargeId,
                     customer_email: data.customer_email,
                     revenue: data.revenue || 0,
                     commission_amount: amount,
+                    amount: amount, // Vital missing link
                     status: 'pending' // Pending payout
                 });
 

@@ -143,15 +143,26 @@ export default async function ReferredUsersPage({
         }
     }
 
-    const pagedReferrals = (referrals || []).map((r) => {
+    const aggregatedMap = new Map();
+    for (const r of (referrals || [])) {
         const affiliateId = (r.affiliate as any)?.id;
         const email = (r.customer_email || r.referred_email || '').toLowerCase();
         const totals =
             byReferralId[r.id] ??
             byAffiliateEmail[`${affiliateId}::${email}`] ??
             { revenue: 0, commission: 0 };
-        return { ...r, revenue: totals.revenue, totalCommission: totals.commission };
-    });
+            
+        if (!aggregatedMap.has(email)) {
+            aggregatedMap.set(email, { ...r, revenue: 0, totalCommission: 0 });
+        }
+        const existing = aggregatedMap.get(email);
+        existing.revenue += totals.revenue;
+        existing.totalCommission += totals.commission;
+        // Keep the oldest created_at or highest status as representative if needed, 
+        // default merge logic is sufficient here.
+    }
+    
+    const pagedReferrals = Array.from(aggregatedMap.values());
 
     const displayTotal = searchQuery ? (filteredCount ?? 0) : (totalReferrals ?? 0);
 

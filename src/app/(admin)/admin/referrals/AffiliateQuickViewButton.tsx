@@ -62,7 +62,7 @@ export function AffiliateQuickViewButton({
     compact = false,
     campaigns = [],
 }: {
-    affiliate: QuickViewAffiliate;
+    affiliate: QuickViewAffiliate & { campaign_id?: string | null };
     compact?: boolean;
     campaigns?: any[];
 }) {
@@ -74,14 +74,19 @@ export function AffiliateQuickViewButton({
         month: 'short', day: '2-digit', year: 'numeric',
     });
 
+    const campaign = campaigns.find(c => c.id === affiliate.campaign_id);
+    const campaignName = campaign?.name ? (campaign.name.length > 15 ? campaign.name.substring(0, 15) + '...' : campaign.name) : 'Default';
+    const campaignPercent = campaign?.default_commission_percent || 20;
+
     return (
         <>
             {compact ? (
                 <button
                     onClick={() => setOpen(true)}
-                    className="text-[11px] text-zinc-500 hover:text-amber-400 transition-colors duration-150 truncate"
+                    className="text-[11px] text-zinc-500 hover:text-amber-400 transition-colors duration-150 truncate flex items-center justify-between gap-2"
                 >
-                    via {affiliate.name}
+                    <span>via {affiliate.name}</span>
+                    <span className="bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider">{campaignName} ({campaignPercent}%)</span>
                 </button>
             ) : (
             <button
@@ -91,7 +96,12 @@ export function AffiliateQuickViewButton({
                 <div className="font-medium text-zinc-200 group-hover/btn:text-amber-400 transition-colors duration-150 underline decoration-zinc-700 decoration-dotted underline-offset-2 hover:decoration-amber-400">
                     {affiliate.name}
                 </div>
-                <div className="text-zinc-500 text-xs font-mono mt-0.5">{affiliate.email}</div>
+                <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-zinc-500 text-xs font-mono">{affiliate.email}</span>
+                    <span className="bg-zinc-800 border border-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider group-hover/btn:text-amber-400 group-hover/btn:border-amber-500/30 transition-colors">
+                        {campaignName} ({campaignPercent}%)
+                    </span>
+                </div>
             </button>
             )}
 

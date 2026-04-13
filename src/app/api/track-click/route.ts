@@ -21,7 +21,9 @@ export async function POST(req: Request) {
         }
 
         // Parse code for tag if using format "REFCODE+TAG"
-        const [refCode, ...tagParts] = code.split('+');
+        // Ensure spaces caused by naive URL param decoding are restored to '+' before splitting
+        const normalizedCode = code.replace(/ /g, '+');
+        const [refCode, ...tagParts] = normalizedCode.split('+');
         const tag = tagParts.join('+') || null;
 
         const admin = createAdminClient(

@@ -32,6 +32,7 @@ export function AddManualReferralModal({ affiliates }: { affiliates: AffiliateOp
     const [customerEmail, setCustomerEmail] = useState("");
     const [revenue, setRevenue] = useState("");
     const [commission, setCommission] = useState("");
+    const [isPercentage, setIsPercentage] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,6 +47,7 @@ export function AddManualReferralModal({ affiliates }: { affiliates: AffiliateOp
             customer_email: customerEmail,
             revenue: revenue ? parseFloat(revenue) : undefined,
             commission: commission ? parseFloat(commission) : undefined,
+            isPercentage: isPercentage,
         };
 
         const res = await createManualReferral(data);
@@ -131,7 +133,25 @@ export function AddManualReferralModal({ affiliates }: { affiliates: AffiliateOp
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="commission" className="text-zinc-400 text-xs uppercase tracking-wider">Commission ($)</Label>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="commission" className="text-zinc-400 text-xs uppercase tracking-wider">Commission</Label>
+                                    <div className="flex bg-zinc-800 rounded p-0.5 border border-zinc-700">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setIsPercentage(false)} 
+                                            className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-semibold ${!isPercentage ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-zinc-300'}`}
+                                        >
+                                            $
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setIsPercentage(true)} 
+                                            className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-semibold ${isPercentage ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-zinc-300'}`}
+                                        >
+                                            %
+                                        </button>
+                                    </div>
+                                </div>
                                 <Input
                                     id="commission"
                                     type="number"

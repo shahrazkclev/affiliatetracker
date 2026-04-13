@@ -208,6 +208,7 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
         referral_id: referralData?.id || null,  // Link to the referral
         revenue: amount,
         commission_amount: commissionAmount,
+        amount: commissionAmount,
         stripe_charge_id: stripeChargeId,
         status: 'pending',
         created_at: new Date().toISOString(),

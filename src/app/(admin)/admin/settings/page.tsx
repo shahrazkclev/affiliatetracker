@@ -73,7 +73,7 @@ export default async function GlobalSettingsPage() {
                 </div>
             </div>
 
-            <div className="grid gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
 
                 {/* ── Stripe Integration ───────────────────────────────────────── */}
                 <StripeConnectCard />
