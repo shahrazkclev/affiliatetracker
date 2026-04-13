@@ -13,7 +13,7 @@ type Step = 'email' | 'otp' | 'password' | 'reset-sent';
 export default function LoginPage() {
     const [step, setStep] = useState<Step>('email');
     const [email, setEmail] = useState('');
-    const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '', '', '']);
+    const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
     const [error, setError] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
     const [isDashboard, setIsDashboard] = useState(false);
@@ -86,11 +86,11 @@ export default function LoginPage() {
         const next = [...otpDigits];
         next[index] = digit;
         setOtpDigits(next);
-        if (digit && index < 7) {
+        if (digit && index < 5) {
             otpRefs.current[index + 1]?.focus();
         }
         // Auto-submit when all filled
-        if (digit && next.every(d => d !== '') && index === 7) {
+        if (digit && next.every(d => d !== '') && index === 5) {
             submitOtp(next.join(''));
         }
     }
@@ -102,10 +102,10 @@ export default function LoginPage() {
     }
 
     function handleOtpPaste(e: React.ClipboardEvent) {
-        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 8);
-        if (pasted.length === 8) {
+        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+        if (pasted.length === 6) {
             setOtpDigits(pasted.split(''));
-            otpRefs.current[7]?.focus();
+            otpRefs.current[5]?.focus();
             submitOtp(pasted);
         }
         e.preventDefault();
@@ -120,7 +120,7 @@ export default function LoginPage() {
             const result = await verifyOtpCode(fd);
             if (result?.error) {
                 setError(result.error);
-                setOtpDigits(['', '', '', '', '', '', '', '']);
+                setOtpDigits(['', '', '', '', '', '']);
                 setTimeout(() => otpRefs.current[0]?.focus(), 50);
             }
         });
@@ -128,7 +128,7 @@ export default function LoginPage() {
 
     async function handleResendOtp() {
         setError(null);
-        setOtpDigits(['', '', '', '', '', '', '', '']);
+        setOtpDigits(['', '', '', '', '', '']);
         startTransition(async () => {
             const fd = new FormData();
             fd.set('email', email);
@@ -162,7 +162,7 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#0e0e10] p-4">
-            <Card className="w-full max-w-sm bg-zinc-900 border-zinc-800 shadow-2xl">
+            <Card className="w-full max-w-md bg-zinc-900 border-zinc-800 shadow-2xl">
                 <CardHeader className="text-center space-y-3 pb-4">
                     <img src="/affiliatemango_logo.png" alt="AffiliateMango" className="w-12 h-12 object-contain mx-auto" />
                     <div>
@@ -171,7 +171,7 @@ export default function LoginPage() {
                         </CardTitle>
                         <CardDescription className="text-zinc-400 mt-1">
                             {step === 'email' && 'Enter your email to continue'}
-                            {step === 'otp' && `We sent a 8-digit code to ${email}`}
+                            {step === 'otp' && `We sent a 6-digit code to ${email}`}
                             {step === 'password' && email}
                             {step === 'reset-sent' && 'Password reset link sent'}
                         </CardDescription>
