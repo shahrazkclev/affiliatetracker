@@ -97,10 +97,10 @@ export default async function ReferralsPage({
 
     let commsData: any[] = [];
     if (emails.length > 0) {
-        // We match commissions by customer_email
+        // We match commissions by customer_email or referral_id
         const { data: commissionsData } = await supabase
             .from('commissions')
-            .select('amount, revenue, customer_email, status, affiliate_id, created_at')
+            .select('amount, revenue, customer_email, status, affiliate_id, created_at, referral_id')
             .eq('org_id', orgId)
             .in('customer_email', emails);
         commsData = commissionsData || [];
@@ -126,10 +126,14 @@ export default async function ReferralsPage({
 
     const referrals = (rawReferrals || []).map((r: any) => {
         const email = r.customer_email || r.referred_email;
-        // Find all commissions matching this referral's email
-        const userComms = commsWithStatus.filter(c => c.customer_email?.toLowerCase() === email?.toLowerCase());
+        // Find all commissions matching precisely this referral row
+        const userComms = commsWithStatus.filter(c => {
+            if (c.referral_id) return c.referral_id === r.id;
+            // Legacy fallback if referral_id wasn't attached
+            return c.customer_email?.toLowerCase() === email?.toLowerCase() && c.affiliate_id === r.affiliate_id;
+        });
         
-        // Sum up commission amount and revenue
+        // Sum up ONLY this referral's isolated commission events
         const totalCommission = userComms.reduce((acc, c) => acc + Number(c.amount || 0), 0);
         const totalRevenue = userComms.reduce((acc, c) => acc + Number(c.revenue || 0), 0);
 
