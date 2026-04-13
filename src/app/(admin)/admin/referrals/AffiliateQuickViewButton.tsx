@@ -74,7 +74,11 @@ export function AffiliateQuickViewButton({
         month: 'short', day: '2-digit', year: 'numeric',
     });
 
-    const campaign = campaigns.find(c => c.id === affiliate.campaign_id);
+    let campaign = campaigns.find(c => c.id === affiliate.campaign_id);
+    if (!campaign && campaigns.length > 0) {
+        // Fallback to the organization's dynamic default campaign
+        campaign = campaigns.find(c => c.is_default);
+    }
     const campaignName = campaign?.name ? (campaign.name.length > 15 ? campaign.name.substring(0, 15) + '...' : campaign.name) : 'Default';
     const campaignPercent = campaign?.default_commission_percent || 20;
 

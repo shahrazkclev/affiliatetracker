@@ -277,7 +277,7 @@ export default async function AdminDashboard() {
                         <div className="min-w-0">
                           <p className="font-mono text-xs text-zinc-300 truncate">{email}</p>
                           {aff ? (
-                            <AffiliateQuickViewButton affiliate={aff} compact />
+                            <AffiliateQuickViewButton affiliate={aff} compact campaigns={campaigns || []} />
                           ) : (
                             <p className="text-[11px] text-zinc-500 truncate">via Unknown</p>
                           )}
