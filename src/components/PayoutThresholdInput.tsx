@@ -23,7 +23,7 @@ export function PayoutThresholdInput({ initialValue = 0 }: { initialValue?: numb
     };
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
             <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">$</span>
                 <Input
@@ -33,15 +33,24 @@ export function PayoutThresholdInput({ initialValue = 0 }: { initialValue?: numb
                     className="pl-7 w-32 bg-zinc-950 border-zinc-800 text-zinc-100 font-mono focus-visible:ring-amber-500"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    onBlur={handleApply}
                     onKeyDown={(e) => {
                         if (e.key === "Enter") handleApply();
                     }}
                 />
             </div>
-            <span className="text-xs font-medium text-zinc-600 uppercase font-sans tracking-widest">
-                Min Value
-            </span>
+            
+            {value !== initialValue.toString() ? (
+                <button
+                    onClick={handleApply}
+                    className="text-xs bg-amber-500 hover:bg-amber-400 text-black font-bold uppercase tracking-wider px-3 py-1.5 rounded transition-colors"
+                >
+                    Update
+                </button>
+            ) : (
+                <span className="text-xs font-medium text-zinc-600 uppercase font-sans tracking-widest pl-1">
+                    Min Value
+                </span>
+            )}
         </div>
     );
 }
