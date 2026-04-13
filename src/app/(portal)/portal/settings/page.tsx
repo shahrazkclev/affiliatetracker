@@ -29,13 +29,13 @@ export default async function AffiliateSettingsPage() {
 
 
     return (
-        <div className="space-y-6 max-w-3xl">
+        <div className="space-y-6 w-full max-w-6xl mx-auto">
             <div>
                 <h2 className="text-2xl font-bold text-zinc-100 mb-1 tracking-tight">Account settings</h2>
             </div>
 
-            <div className="space-y-6">
-                <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl w-full">
                     <CardHeader>
                         <CardTitle className="text-lg font-semibold text-zinc-100">Profile</CardTitle>
                     </CardHeader>
@@ -60,40 +60,42 @@ export default async function AffiliateSettingsPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-semibold text-zinc-100">Payouts</CardTitle>
-                        <CardDescription className="text-zinc-500">
-                            Configure how you want to get paid.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="payoutEmail" className="text-zinc-300">Payout Email (PayPal/Wise)</Label>
-                            <Input
-                                id="payoutEmail"
-                                type="email"
-                                defaultValue={affiliate?.payout_email || affiliate?.email || user?.email || ''}
-                                className="bg-zinc-950 border-zinc-800 text-zinc-200 focus-visible:ring-orange-500"
-                            />
-                            <p className="text-xs text-zinc-500">The email address where your commissions will be sent.</p>
-                        </div>
-                        <Button className="bg-orange-600 hover:bg-orange-500 text-black font-semibold rounded-md mt-2">
-                            Save Payout Info
-                        </Button>
-                    </CardContent>
-                </Card>
+                <div className="space-y-6">
+                    <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl w-full">
+                        <CardHeader>
+                            <CardTitle className="text-lg font-semibold text-zinc-100">Payouts</CardTitle>
+                            <CardDescription className="text-zinc-500">
+                                Configure how you want to get paid.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="payoutEmail" className="text-zinc-300">Payout Email (PayPal/Wise)</Label>
+                                <Input
+                                    id="payoutEmail"
+                                    type="email"
+                                    defaultValue={affiliate?.payout_email || affiliate?.email || user?.email || ''}
+                                    className="bg-zinc-950 border-zinc-800 text-zinc-200 focus-visible:ring-orange-500"
+                                />
+                                <p className="text-xs text-zinc-500">The email address where your commissions will be sent.</p>
+                            </div>
+                            <Button className="bg-orange-600 hover:bg-orange-500 text-black font-semibold rounded-md mt-2">
+                                Save Payout Info
+                            </Button>
+                        </CardContent>
+                    </Card>
 
-                <NotificationSettings 
-                    affiliateId={affiliate?.id || ''}
-                    initialPreferences={{
-                        new_referral: affiliate?.notify_new_referral ?? true,
-                        new_commission: affiliate?.notify_new_commission ?? true,
-                        payout_generated: affiliate?.notify_payout_generated ?? true,
-                        account_approved: affiliate?.notify_account_approved ?? true,
-                        account_revision: affiliate?.notify_account_revision ?? true,
-                    }}
-                />
+                    <NotificationSettings 
+                        affiliateId={affiliate?.id || ''}
+                        initialPreferences={{
+                            new_referral: affiliate?.notify_new_referral ?? true,
+                            new_commission: affiliate?.notify_new_commission ?? true,
+                            payout_generated: affiliate?.notify_payout_generated ?? true,
+                            account_approved: affiliate?.notify_account_approved ?? true,
+                            account_revision: affiliate?.notify_account_revision ?? true,
+                        }}
+                    />
+                </div>
             </div>
         </div>
     );
