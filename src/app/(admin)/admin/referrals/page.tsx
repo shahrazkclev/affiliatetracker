@@ -32,14 +32,12 @@ export default async function ReferralsPage({
 
     // Fetch global datasets for in-memory status resolution
     const [
-        { data: allRawReferrals },
         { data: affiliatesData },
         { data: allCommissions },
         { data: allPayouts }
     ] = await Promise.all([
-        supabase.from("referrals").select("*").eq("org_id", orgId).order("created_at", { ascending: false }).limit(10000),
         supabase.from("affiliates").select("*").eq("org_id", orgId).limit(5000),
-        supabase.from("commissions").select("amount, revenue, customer_email, status, affiliate_id, created_at, referral_id").eq("org_id", orgId).limit(10000),
+        supabase.from("commissions").select("id, amount, revenue, status, affiliate_id, created_at, referral_id, referral:referrals(customer_email)").eq("org_id", orgId).order("created_at", { ascending: false }).limit(10000),
         supabase.from("payouts").select("affiliate_id, created_at").eq("org_id", orgId).limit(10000)
     ]);
 
@@ -53,34 +51,26 @@ export default async function ReferralsPage({
         payoutMap[p.affiliate_id].push(new Date(p.created_at));
     }
 
-    const commsWithStatus = (allCommissions || []).map(c => {
+    // Resolve dynamic statuses for ALL specific sales (mapped as referral records)
+    let processedReferrals = (allCommissions || []).map((c: any) => {
         const dates = payoutMap[c.affiliate_id] || [];
         const commDate = new Date(c.created_at);
         const settled = dates.some(pd => pd >= commDate);
-        return { ...c, effectiveStatus: settled ? 'paid' : (c.status || 'pending') };
-    });
+        const effectiveStatus = settled ? 'paid' : (c.status || 'pending');
 
-    // Resolve dynamic statuses for ALL referrals
-    let processedReferrals = (allRawReferrals || []).map((r: any) => {
-        const email = r.customer_email || r.referred_email;
-        const userComms = commsWithStatus.filter(c => {
-            if (c.referral_id) return c.referral_id === r.id;
-            return c.customer_email?.toLowerCase() === email?.toLowerCase() && c.affiliate_id === r.affiliate_id;
-        });
-        
-        const totalCommission = userComms.reduce((acc, c) => acc + Number(c.amount || 0), 0);
-        const totalRevenue = userComms.reduce((acc, c) => acc + Number(c.revenue || 0), 0);
-
-        const commissionStatus = userComms.length > 0
-            ? (userComms.every(c => c.effectiveStatus === 'paid') ? 'paid' : 'pending')
-            : (r.status === 'active' ? 'pending' : r.status);
+        let customerEmail = "Unknown";
+        if (c.referral && !Array.isArray(c.referral)) {
+            customerEmail = c.referral.customer_email || "Unknown";
+        }
 
         return {
-            ...r,
-            status: commissionStatus,
-            affiliate: r.affiliate_id ? affMap[r.affiliate_id] ?? null : null,
-            totalCommission,
-            totalRevenue
+            id: c.id,
+            customer_email: customerEmail,
+            status: effectiveStatus,
+            affiliate: c.affiliate_id ? affMap[c.affiliate_id] ?? null : null,
+            totalCommission: Number(c.amount || 0),
+            totalRevenue: Number(c.revenue || 0),
+            created_at: c.created_at
         };
     });
 
@@ -102,8 +92,6 @@ export default async function ReferralsPage({
         processedReferrals = processedReferrals.filter(r => {
             return (
                 r.customer_email?.toLowerCase().includes(q) ||
-                r.referred_email?.toLowerCase().includes(q) ||
-                r.stripe_customer_id?.toLowerCase().includes(q) ||
                 r.affiliate?.name?.toLowerCase().includes(q) ||
                 r.affiliate?.email?.toLowerCase().includes(q)
             );
@@ -222,7 +210,7 @@ export default async function ReferralsPage({
                                 </tr>
                             )}
                             {(referrals ?? []).map((ref) => {
-                                const email = ref.customer_email || ref.referred_email || "—";
+                                const email = ref.customer_email || "—";
                                 const aff = ref.affiliate as any;
                                 return (
                                     <tr
