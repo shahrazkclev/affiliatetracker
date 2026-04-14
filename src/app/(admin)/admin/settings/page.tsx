@@ -74,44 +74,43 @@ export default async function GlobalSettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-
-                {/* ── Stripe Integration ───────────────────────────────────────── */}
-                <StripeConnectCard />
                 
-                {/* ── Tracking Snippet ───────────────────────────────────────── */}
-                <TrackingSnippetCard portalUrl={portalUrl} orgId={org?.id} />
-
-                {/* ── Payout Notification Email ─────────────────────────────────── */}
-                <PayoutEmailCard currentEmail={org?.payout_notification_email || null} />
-
-                {/* ── Custom SMTP Settings ─────────────────────────────────────── */}
-                <SmtpSettingsCard currentConfig={org || {}} isPro={isPro} />
-
-
-                <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group">
-                    <CardHeader className="pb-4 border-b border-zinc-800/50">
-                        <CardTitle className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
-                            <Download className="w-4 h-4 text-orange-400" /> Platform Migration
-                        </CardTitle>
-                        <CardDescription className="text-zinc-500 text-[11px] font-mono mt-1">
-                            Synchronize external PromoteKit matrices manually
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-950 border border-zinc-800 rounded-lg p-4 shadow-inner">
-                            <div>
-                                <h4 className="text-sm font-semibold text-zinc-200">Force Data Pull</h4>
-                                <p className="text-xs text-zinc-500 font-mono mt-1">Refreshes Affiliates, Campaigns, and Commissions from upstream.</p>
-                                {lastSyncedAt && (
-                                    <p className="text-[10px] text-zinc-600 font-mono mt-2">
-                                        Last synced: {new Date(lastSyncedAt).toLocaleString()}
-                                    </p>
-                                )}
+                {/* Left Column */}
+                <div className="space-y-6">
+                    <StripeConnectCard />
+                    <PayoutEmailCard currentEmail={org?.payout_notification_email || null} />
+                    
+                    <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl relative overflow-hidden group">
+                        <CardHeader className="pb-4 border-b border-zinc-800/50">
+                            <CardTitle className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+                                <Download className="w-4 h-4 text-orange-400" /> Platform Migration
+                            </CardTitle>
+                            <CardDescription className="text-zinc-500 text-[11px] font-mono mt-1">
+                                Synchronize external PromoteKit matrices manually
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-950 border border-zinc-800 rounded-lg p-4 shadow-inner">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-zinc-200">Force Data Pull</h4>
+                                    <p className="text-xs text-zinc-500 font-mono mt-1">Refreshes Affiliates, Campaigns, and Commissions from upstream.</p>
+                                    {lastSyncedAt && (
+                                        <p className="text-[10px] text-zinc-600 font-mono mt-2">
+                                            Last synced: {new Date(lastSyncedAt).toLocaleString()}
+                                        </p>
+                                    )}
+                                </div>
+                                <DataMigrationDialog />
                             </div>
-                            <DataMigrationDialog />
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-6">
+                    <TrackingSnippetCard portalUrl={portalUrl} orgId={org?.id} />
+                    <SmtpSettingsCard currentConfig={org || {}} isPro={isPro} />
+                </div>
 
             </div>
         </div>

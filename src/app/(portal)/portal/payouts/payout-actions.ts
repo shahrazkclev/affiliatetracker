@@ -27,24 +27,37 @@ export async function requestPayout(affiliateId: string, amount: number) {
     if (error) return { success: false, error: error.message };
 
     // Fetch the configured payout notification email
-    // Falls back to the org owner's auth email if not set
-    const { data: org } = await supabase
+    const { data: org, error: orgErr } = await supabase
         .from('organizations')
-        .select('payout_notification_email, owner_id')
+        .select('payout_notification_email')
         .eq('id', affiliate.org_id)
         .single();
 
+    if (orgErr) {
+        console.error('[requestPayout] Error fetching org:', orgErr);
+    }
+
     let adminEmail = org?.payout_notification_email || null;
 
-    // Fall back to the signed-in user's email (org owner)
-    if (!adminEmail && org?.owner_id) {
-        const { createClient: createAdminClient } = await import('@supabase/supabase-js');
-        const adminSupabase = createAdminClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-        const { data: ownerUser } = await adminSupabase.auth.admin.getUserById(org.owner_id);
-        adminEmail = ownerUser?.user?.email || null;
+    // Fall back to the signed-in team member (org owner)
+    if (!adminEmail) {
+        const { data: teamMember } = await supabase
+            .from('team_members')
+            .select('user_id')
+            .eq('org_id', affiliate.org_id)
+            .eq('role', 'owner')
+            .limit(1)
+            .single();
+
+        if (teamMember?.user_id) {
+            const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+            const adminSupabase = createAdminClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!
+            );
+            const { data: ownerUser } = await adminSupabase.auth.admin.getUserById(teamMember.user_id);
+            adminEmail = ownerUser?.user?.email || null;
+        }
     }
 
     // Send notification email if we have an address
