@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { markPayoutAsPaid } from "@/app/actions/admin";
 
 export async function dismissPayoutRequest(requestId: string) {
     try {
@@ -23,7 +24,7 @@ export async function resolvePayoutRequest(requestId: string) {
     try {
         const supabase = await createClient();
         
-        // 1. Fetch the request details to construct the actual payout record
+        // 1. Fetch the request details
         const { data: request, error: fetchErr } = await supabase
             .from('payout_requests')
             .select('org_id, affiliate_id, amount')
@@ -34,22 +35,13 @@ export async function resolvePayoutRequest(requestId: string) {
             return { success: false, error: fetchErr?.message || 'Payout request not found.' };
         }
 
-        // 2. Formally log the payout to deduct affiliate balances
-        const { error: insertErr } = await supabase
-            .from('payouts')
-            .insert({
-                org_id: request.org_id,
-                affiliate_id: request.affiliate_id,
-                amount: request.amount,
-                status: 'paid', // Standard payout status
-            });
-
-        if (insertErr) {
-            console.error('[resolvePayoutRequest] Error inserting payout:', insertErr);
-            return { success: false, error: insertErr.message };
+        // 2. Properly execute the payouts ledger logic natively mapping emails and ledger zeroes
+        const res = await markPayoutAsPaid(request.affiliate_id, request.amount, 'Requested via affiliate portal');
+        if (!res.success) {
+            return { success: false, error: res.error || 'Failed to dispatch ledger pipeline.' };
         }
 
-        // 3. Mark the request as paid
+        // 3. Mark the request as officially paid
         const { error: updateErr } = await supabase
             .from('payout_requests')
             .update({ status: 'paid', resolved_at: new Date().toISOString() })
