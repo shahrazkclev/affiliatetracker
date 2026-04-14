@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from './utils/supabase/middleware'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const response = await updateSession(request);
 
     // ── Affiliate attribution via ?via=refCode+sourceTag ──────────────────────
