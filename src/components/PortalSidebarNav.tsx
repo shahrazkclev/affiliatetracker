@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, DollarSign, Wallet, FileText, Settings } from "lucide-react";
+import { Home, Users, DollarSign, Wallet, FileText, Settings, Link as LinkIcon } from "lucide-react";
 
 const navItems = [
     { icon: Home,        label: "Dashboard",       href: "/portal" },
+    { icon: LinkIcon,    label: "Tracking Links",  href: "/portal/links" }, // New isolated stats tab
     { icon: DollarSign,  label: "Referrals",       href: "/portal/referrals" }, // Now holds specific commission/sales mapping
     { icon: Users,       label: "Customers",       href: "/portal/customers" }, // Now holds actual customer tracking mapping
     { icon: Wallet,      label: "Payouts",         href: "/portal/payouts" },

@@ -2,7 +2,7 @@ import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, MousePointerClick, Users, Wallet, Link as LinkIcon, Activity } from "lucide-react";
-import { PortalLinkGenerator } from "@/components/PortalLinkGenerator";
+import { PortalBaseLink } from "@/components/PortalBaseLink";
 import { redirect } from "next/navigation";
 
 export default async function PortalHome() {
@@ -55,35 +55,7 @@ export default async function PortalHome() {
         .select('id, status, sub_id, created_at')
         .eq('affiliate_id', affiliate?.id ?? '');
 
-    // Clicks grouped by tag
-    const { data: clickEvents } = await supabase
-        .from('click_events')
-        .select('sub_id')
-        .eq('affiliate_id', affiliate?.id ?? '');
-
-    const clickCounts: Record<string, number> = {};
-    for (const c of clickEvents || []) {
-        if (!c.sub_id) continue;
-        const tag = c.sub_id.toLowerCase().replace(/[^a-z0-9_-]/g, '').trim();
-        clickCounts[tag] = (clickCounts[tag] || 0) + 1;
-    }
-
-    const tagAnalytics: Record<string, { referrals: number; revenue: number; commissions: number }> = {};
-    
-    for (const r of referrals || []) {
-        if (!r.sub_id) continue;
-        const tag = r.sub_id.toLowerCase().replace(/[^a-z0-9_-]/g, '').trim();
-        if (!tagAnalytics[tag]) tagAnalytics[tag] = { referrals: 0, revenue: 0, commissions: 0 };
-        tagAnalytics[tag].referrals += 1;
-    }
-
-    for (const c of commissions || []) {
-        if (!c.sub_id) continue;
-        const tag = c.sub_id.toLowerCase().replace(/[^a-z0-9_-]/g, '').trim();
-        if (!tagAnalytics[tag]) tagAnalytics[tag] = { referrals: 0, revenue: 0, commissions: 0 };
-        tagAnalytics[tag].revenue += Number(c.revenue || 0);
-        tagAnalytics[tag].commissions += Number(c.amount || 0);
-    }
+    // The dashboard continues logic without parsing specific tag-based arrays
 
     // Compute stats
     const totalCommission = (commissions || []).reduce((s, c) => s + Number(c.amount), 0);
@@ -118,14 +90,7 @@ export default async function PortalHome() {
             </div>
 
             {/* Link Generator */}
-            <PortalLinkGenerator 
-                baseUrl={baseUrl} 
-                refCode={refCode} 
-                affiliateId={affiliate?.id || ''} 
-                clickCounts={clickCounts}
-                tagAnalytics={tagAnalytics}
-                initialLinks={affiliate?.custom_tracking_links || []}
-            />
+            <PortalBaseLink baseUrl={baseUrl} />
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
