@@ -6,8 +6,8 @@ import { Home, Users, DollarSign, Wallet, FileText, Settings } from "lucide-reac
 
 const navItems = [
     { icon: Home,        label: "Dashboard",       href: "/portal" },
-    { icon: Users,       label: "Referrals",       href: "/portal/referrals" },
-    { icon: DollarSign,  label: "Commissions",     href: "/portal/commissions" },
+    { icon: DollarSign,  label: "Referrals",       href: "/portal/referrals" }, // Now holds specific commission/sales mapping
+    { icon: Users,       label: "Customers",       href: "/portal/customers" }, // Now holds actual customer tracking mapping
     { icon: Wallet,      label: "Payouts",         href: "/portal/payouts" },
     { icon: FileText,    label: "Reports",         href: "/portal/commission-details" },
     { icon: Settings,    label: "Settings",        href: "/portal/settings" },
