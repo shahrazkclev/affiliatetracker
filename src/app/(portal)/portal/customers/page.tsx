@@ -42,43 +42,58 @@ export default async function AffiliateReferralsPage({ searchParams }: { searchP
         .select('id, affiliate_id, referral_id, customer_email, revenue, commission_amount, amount')
         .eq('affiliate_id', affiliate.id);
 
-    // Build lookup maps
-    const byReferralId: Record<string, { revenue: number; commission: number }> = {};
+    // Build lookup maps natively globally mapping by email
     const byAffiliateEmail: Record<string, { revenue: number; commission: number }> = {};
 
     for (const c of commissions || []) {
         const rev = Number(c.revenue || 0);
         const comm = Number(c.commission_amount || c.amount || 0);
+        const email = (c.customer_email || '—').toLowerCase();
 
-        if (c.referral_id) {
-            if (!byReferralId[c.referral_id]) byReferralId[c.referral_id] = { revenue: 0, commission: 0 };
-            byReferralId[c.referral_id].revenue += rev;
-            byReferralId[c.referral_id].commission += comm;
-        }
-
-        if (c.customer_email && c.affiliate_id) {
-            const key = `${c.affiliate_id}::${c.customer_email.toLowerCase()}`;
+        if (email && c.affiliate_id) {
+            const key = `${c.affiliate_id}::${email}`;
             if (!byAffiliateEmail[key]) byAffiliateEmail[key] = { revenue: 0, commission: 0 };
             byAffiliateEmail[key].revenue += rev;
             byAffiliateEmail[key].commission += comm;
         }
     }
 
-    // Attach per-customer totals to each referral
-    const referralsWithRevenue = (referrals || []).map(r => {
-        const affiliateId = affiliate.id;
-        const email = (r.customer_email || r.referred_email || '').toLowerCase();
+    // Unify customers so the same email doesn't repeat
+    const unifiedCustomersMap = new Map<string, any>();
+    
+    for (const r of referrals || []) {
+        const emailRaw = r.customer_email || r.referred_email || '—';
+        const email = emailRaw.toLowerCase();
+        
+        if (!unifiedCustomersMap.has(email)) {
+            const totals = byAffiliateEmail[`${affiliate.id}::${email}`] ?? { revenue: 0, commission: 0 };
+            
+            unifiedCustomersMap.set(email, {
+                id: r.id,
+                email: emailRaw,
+                status: r.status,
+                created_at: r.created_at,
+                revenue: totals.revenue,
+                totalCommission: totals.commission
+            });
+        } else {
+            const existing = unifiedCustomersMap.get(email);
+            // Keep the earliest signup date
+            if (new Date(r.created_at) < new Date(existing.created_at)) {
+                existing.created_at = r.created_at;
+            }
+            // Upgrade to active status if applicable
+            if (r.status === 'active') {
+                existing.status = 'active';
+            }
+        }
+    }
 
-        // Try referral_id match first, then email match
-        const totals = byReferralId[r.id]
-            ?? byAffiliateEmail[`${affiliateId}::${email}`]
-            ?? { revenue: 0, commission: 0 };
+    const referralsWithRevenue = Array.from(unifiedCustomersMap.values());
+    referralsWithRevenue.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-        return { ...r, revenue: totals.revenue, totalCommission: totals.commission };
-    });
-
-    const totalReferrals = referralsWithRevenue?.length || 0;
-    const activeReferrals = referralsWithRevenue?.filter(r => r.status === 'active').length || 0;
+    const totalReferrals = referralsWithRevenue.length;
+    const activeReferrals = referralsWithRevenue.filter(r => r.status === 'active').length;
 
     const start = (currentPage - 1) * PAGE_SIZE;
     const pagedReferrals = referralsWithRevenue.slice(start, start + PAGE_SIZE);
@@ -145,7 +160,7 @@ export default async function AffiliateReferralsPage({ searchParams }: { searchP
                                     <td className="px-6 py-4 font-mono text-zinc-300 text-sm">
                                         {/* Redact part of the email for privacy in the affiliate portal */}
                                         {(() => {
-                                            const raw = ref.customer_email || ref.referred_email || '—';
+                                            const raw = ref.email || '—';
                                             if (showEmail) return raw;
                                             return raw.replace(/(.{2})(.*)(?=@)/,
                                                 (gp1: string, gp2: string, gp3: string) => gp2 + gp3.replace(/./g, '*')

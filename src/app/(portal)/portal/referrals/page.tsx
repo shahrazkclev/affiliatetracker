@@ -31,7 +31,7 @@ export default async function AffiliateCommissionsPage({ searchParams }: { searc
 
     const { data: commissions, error } = await supabase
         .from('commissions')
-        .select('id, amount, commission_amount, customer_email, status, created_at, referral_id')
+        .select('id, amount, commission_amount, customer_email, status, created_at, referral_id, revenue')
         .eq('affiliate_id', affiliate.id)
         .order('created_at', { ascending: false });
 
@@ -103,6 +103,7 @@ export default async function AffiliateCommissionsPage({ searchParams }: { searc
                         <thead className="bg-zinc-950/80 border-b border-zinc-800/80 text-zinc-400 uppercase tracking-wider text-[11px] font-semibold">
                             <tr>
                                 <th className="px-6 py-4 whitespace-nowrap">Customer</th>
+                                <th className="px-6 py-4 whitespace-nowrap text-right">Sale Amount</th>
                                 <th className="px-6 py-4 whitespace-nowrap text-right">Commission</th>
                                 <th className="px-6 py-4 whitespace-nowrap">Date</th>
                                 <th className="px-6 py-4 whitespace-nowrap text-center">Status</th>
@@ -111,7 +112,7 @@ export default async function AffiliateCommissionsPage({ searchParams }: { searc
                         <tbody className="divide-y divide-zinc-800/50">
                             {paged.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center text-zinc-500 font-mono text-xs uppercase tracking-widest bg-zinc-950/30">
+                                    <td colSpan={5} className="px-6 py-12 text-center text-zinc-500 font-mono text-xs uppercase tracking-widest bg-zinc-950/30">
                                         {error ? "Error fetching commissions." : "No commissions yet."}
                                     </td>
                                 </tr>
@@ -126,7 +127,12 @@ export default async function AffiliateCommissionsPage({ searchParams }: { searc
                                     <tr key={c.id} className="hover:bg-zinc-800/30 transition-colors duration-200 border-l-2 border-transparent hover:border-orange-500">
                                         <td className="px-6 py-4 font-mono text-zinc-300 text-sm">{redacted}</td>
                                         <td className="px-6 py-4 text-right whitespace-nowrap">
-                                            <span className="text-orange-400 font-mono font-semibold">
+                                            <span className="text-emerald-400 font-mono font-semibold">
+                                                ${(Number(c.revenue) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                                            <span className="text-amber-400 font-mono font-semibold">
                                                 ${commAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                             </span>
                                         </td>
