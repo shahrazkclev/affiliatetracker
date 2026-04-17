@@ -7,29 +7,31 @@ import { Home, Users, UserPlus, DollarSign, Megaphone, MonitorPlay, Wallet, Hist
 
 const navGroups = [
   {
-    title: "Overview",
+    title: "Core",
     items: [
       { icon: Home, label: "Dashboard", href: "/admin" },
-      { icon: Users, label: "Partners", href: "/admin/affiliates" },
+      { icon: Users, label: "Affiliates", href: "/admin/affiliates" },
       { icon: GitMerge, label: "Referrals", href: "/admin/referrals" },
-      { icon: UserPlus, label: "Customers", href: "/admin/referred-users" },
     ]
   },
-
   {
-    title: "Payouts",
+    title: "Money",
     items: [
-      { icon: Wallet, label: "Generate Payouts", href: "/admin/payouts/generate" },
-      { icon: History, label: "Payout History", href: "/admin/payouts/history" },
+      { icon: Wallet, label: "Payouts", href: "/admin/payouts/generate" },
+      { icon: History, label: "Earnings", href: "/admin/payouts/history" },
     ]
   },
   {
-    title: "Settings",
+    title: "Setup",
     items: [
       { icon: Megaphone, label: "Campaigns", href: "/admin/campaigns" },
-      { icon: MonitorPlay, label: "Portal Config", href: "/admin/portal-config" },
-      { icon: Users, label: "Team Members", href: "/admin/team" },
-      { icon: CreditCard, label: "Subscription", href: "/admin/billing" },
+      { icon: MonitorPlay, label: "Portal Design", href: "/admin/portal-config" },
+      { icon: CreditCard, label: "Stripe", href: "/admin/billing" },
+    ]
+  },
+  {
+    title: "Advanced",
+    items: [
       { icon: Settings, label: "Settings", href: "/admin/settings" },
     ]
   }

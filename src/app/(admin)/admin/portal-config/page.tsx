@@ -93,12 +93,16 @@ export default function PortalConfigPage() {
     return (
         <div className="p-2 sm:p-6 space-y-6 w-full max-w-full max-auto font-sans">
             <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
-                    <MonitorPlay className="w-5 h-5 text-amber-500" />
-                </div>
-                <div>
-                    <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">Portal Configuration</h2>
-                    <p className="text-sm text-zinc-400 font-medium tracking-wide border-l-2 border-amber-500/50 pl-2 ml-1 mt-1">Manage affiliate dashboard styling &amp; domains</p>
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <MonitorPlay className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-extrabold text-white tracking-tight">Your Affiliate Portal</h2>
+                        <p className="text-base text-zinc-400 font-medium tracking-wide mt-1">
+                            <span className="text-indigo-400 font-semibold">This is what your affiliates will see</span> when they log in to your platform
+                        </p>
+                    </div>
                 </div>
             </div>
 

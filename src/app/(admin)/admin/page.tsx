@@ -101,10 +101,17 @@ export default async function AdminDashboard() {
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
           <Network className="w-5 h-5 text-white" />
         </div>
-        <div>
-          <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Dashboard Overview</h2>
-          <p className="text-sm text-slate-400 font-medium">System overview & performance metrics</p>
+        <div className="flex-1">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+            Your affiliates generated <span className="text-emerald-400">${estimatedRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> for you
+          </h2>
+          <p className="text-base text-zinc-400 font-medium mt-2">
+            You have <span className="text-amber-400 font-bold">{affiliatesCount || 0}</span> affiliates actively sending traffic
+          </p>
         </div>
+        <Link href="/admin/affiliates" className="bg-orange-500 hover:bg-orange-400 text-black font-bold px-6 py-2.5 rounded-lg shadow-[0_0_15px_rgba(249,115,22,0.5)] transition-all hover:scale-105 active:scale-95 shrink-0">
+            Invite more affiliates
+        </Link>
       </div>
 
       <AdminSetupChecklist 
@@ -113,6 +120,31 @@ export default async function AdminDashboard() {
         hasClicks={totalClicks > 0}
         hasStripe={!!org?.stripe_webhook_id}
       />
+
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-orange-500 to-amber-500 opacity-50" />
+        <h3 className="text-lg font-bold text-zinc-100 flex items-center gap-2 mb-4">
+          <Target className="w-5 h-5 text-orange-400" />
+          Grow your affiliate revenue
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link href="/admin/affiliates" className="bg-zinc-950/50 hover:bg-zinc-800 border border-zinc-800 rounded-lg p-4 transition-all group/item">
+             <p className="font-semibold text-zinc-200 group-hover/item:text-orange-400 transition-colors">Invite 5 more affiliates</p>
+             <p className="text-xs text-zinc-500 mt-1">Grow your sales team automatically</p>
+          </Link>
+          <Link href="/admin/campaigns" className="bg-zinc-950/50 hover:bg-zinc-800 border border-zinc-800 rounded-lg p-4 transition-all group/item">
+             <p className="font-semibold text-zinc-200 group-hover/item:text-orange-400 transition-colors">Create a new campaign</p>
+             <p className="text-xs text-zinc-500 mt-1">Test higher commission incentives</p>
+          </Link>
+          <div className="bg-zinc-950/50 border border-zinc-800 rounded-lg p-4 flex flex-col justify-between">
+             <div>
+                 <p className="font-semibold text-zinc-200">Share your affiliate signup page</p>
+                 <p className="text-xs text-zinc-500 mt-1 mb-3">Copy your direct portal link</p>
+             </div>
+             <CopyButton text={portalUrl} className="w-full bg-zinc-800 hover:bg-zinc-700 h-8 text-xs" />
+          </div>
+        </div>
+      </div>
 
       {/* Geometry Nodes Vibe: Cards have solid dark backgrounds, subtle neon top borders, smooth hover scales */}
       <Card className="bg-zinc-900 border-zinc-800/80 shadow-2xl relative overflow-hidden group transition-all duration-300 hover:border-zinc-700">
@@ -136,8 +168,19 @@ export default async function AdminDashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Node 1: Revenue */}
+      {(!affiliatesCount || affiliatesCount === 0) ? (
+        <div className="bg-zinc-900 border border-orange-500/30 rounded-xl p-12 text-center shadow-2xl relative overflow-hidden mt-8">
+            <div className="absolute top-0 left-0 w-full h-full bg-orange-500/5 animate-pulse" />
+            <h3 className="text-3xl font-extrabold text-zinc-100 mb-4 relative z-10 tracking-tight">You don't have affiliates yet</h3>
+            <p className="text-lg text-zinc-400 mb-8 max-w-xl mx-auto relative z-10 font-medium tracking-wide">Invite your first 5 affiliates and start turning your tool into a revenue engine today.</p>
+            <Link href="/admin/affiliates" className="inline-flex items-center justify-center bg-orange-500 hover:bg-orange-400 text-black font-extrabold px-8 py-4 rounded-xl shadow-[0_0_25px_rgba(249,115,22,0.3)] transition-all hover:scale-105 active:scale-95 relative z-10">
+               <Users className="w-5 h-5 mr-3" /> Invite Affiliates
+            </Link>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Node 1: Revenue */}
         <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl transition-all duration-300 hover:border-zinc-700 group">
           <div className="absolute top-0 left-0 w-full h-[2px] bg-amber-500/20 group-hover:bg-amber-500/80 transition-colors duration-300" />
           <CardHeader className="pb-2">
@@ -288,10 +331,10 @@ export default async function AdminDashboard() {
                       <div className="flex items-center gap-4 shrink-0 ml-4">
                         <div className="flex flex-col items-end border-r border-zinc-800/50 pr-4">
                           <span className="text-[11px] font-semibold text-emerald-400/90 font-mono tracking-wide">
-                            ${(ref.totalRevenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Revenue
+                            ${(ref.totalRevenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Sale
                           </span>
                           <span className="text-[10px] text-amber-500/80 font-mono font-medium tracking-wide">
-                            ${(ref.totalCommission || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Commission
+                            ${(ref.totalCommission || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Earned
                           </span>
                         </div>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wider border ${
@@ -315,6 +358,8 @@ export default async function AdminDashboard() {
           )}
         </CardContent>
       </Card>
+      </div>
+      )}
     </div>
   );
 }

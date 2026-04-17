@@ -8,7 +8,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Eye, Edit2, Ban, CheckCircle2, UserCheck, UserX, AlertTriangle, Info, Tag, RefreshCw, Loader2, Ticket, Check, ChevronsUpDown } from "lucide-react";
 import { updateAffiliate, banAffiliate, activateAffiliate, approvePendingAffiliate, denyPendingAffiliate } from "@/app/actions/admin";
+import { addAffiliateDirectly } from "./actions";
 import { AffiliateEditDialog } from "./AffiliateEditDialog";
+import { PlusCircle } from "lucide-react";
 
 let globalCouponsCache: { id: string; name: string; percent_off: number | null; amount_off: number | null }[] | null = null;
 let globalCouponsFetching = false;
@@ -18,6 +20,13 @@ export function AffiliateActionsCell({ affiliate, campaigns }: { affiliate: any,
     const [isBanOpen, setIsBanOpen] = useState(false);
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [isPendingOpen, setIsPendingOpen] = useState(false);
+    const [isAddCampaignOpen, setIsAddCampaignOpen] = useState(false);
+    
+    // Add Campaign State
+    const [newCampaignId, setNewCampaignId] = useState('');
+    const [newCampaignRefCode, setNewCampaignRefCode] = useState('');
+    const [addCampaignError, setAddCampaignError] = useState<string | null>(null);
+
     const [pendingAction, setPendingAction] = useState<'approve' | 'deny' | 'ban'>('approve');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -32,6 +41,30 @@ export function AffiliateActionsCell({ affiliate, campaigns }: { affiliate: any,
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    async function handleAddCampaign() {
+        if (!newCampaignId || !newCampaignRefCode) return;
+        setIsLoading(true);
+        setAddCampaignError(null);
+        try {
+            const formData = new FormData();
+            formData.append('name', affiliate.name || 'Unknown');
+            formData.append('email', affiliate.email);
+            formData.append('referralCode', newCampaignRefCode);
+            formData.append('campaign_id', newCampaignId);
+            
+            const result = await addAffiliateDirectly(formData);
+            if (result?.error) {
+                setAddCampaignError(result.error);
+            } else {
+                setIsAddCampaignOpen(false);
+            }
+        } catch (error: any) {
+            setAddCampaignError(error.message || 'Failed to assign campaign.');
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     async function handleEditAction(formData: FormData) {
         setIsLoading(true);
@@ -108,6 +141,11 @@ export function AffiliateActionsCell({ affiliate, campaigns }: { affiliate: any,
                             <Edit2 className="w-4 h-4 mr-2" /> Edit Affiliate
                         </DropdownMenuItem>
                     )}
+                    {!isPending && (
+                        <DropdownMenuItem className="hover:bg-zinc-900 cursor-pointer text-orange-400 hover:text-orange-300" onClick={() => setIsAddCampaignOpen(true)}>
+                            <PlusCircle className="w-4 h-4 mr-2" /> Add to Campaign
+                        </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator className="bg-zinc-800" />
                     {!isPending && (
                         <DropdownMenuItem
@@ -123,6 +161,62 @@ export function AffiliateActionsCell({ affiliate, campaigns }: { affiliate: any,
                     )}
                 </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Add to Campaign Dialog */}
+            <Dialog open={isAddCampaignOpen} onOpenChange={setIsAddCampaignOpen}>
+                <DialogContent className="bg-zinc-950 border border-zinc-800 text-zinc-200 max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2 text-orange-500">
+                            <PlusCircle className="w-5 h-5" />
+                            Add to another Campaign
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            Assign <strong>{affiliate.name}</strong> ({affiliate.email}) to a new campaign. This will generate a separate tracking portal for them.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    {addCampaignError && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-3 py-2 rounded-lg text-sm">
+                            {addCampaignError}
+                        </div>
+                    )}
+                    
+                    <div className="grid gap-4 py-2">
+                        <div className="grid gap-2">
+                            <Label htmlFor="new-campaign" className="text-zinc-300 text-xs">Select Campaign</Label>
+                            <select 
+                                id="new-campaign" 
+                                value={newCampaignId} 
+                                onChange={e => setNewCampaignId(e.target.value)}
+                                className="flex h-10 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer appearance-none"
+                            >
+                                <option value="" disabled>Choose a campaign...</option>
+                                {campaigns.filter(c => c.id !== affiliate.campaign_id).map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="new-refcode" className="text-zinc-300 text-xs">New Referral Code</Label>
+                            <Input 
+                                id="new-refcode" 
+                                value={newCampaignRefCode} 
+                                onChange={e => setNewCampaignRefCode(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                                placeholder="e.g. john20" 
+                                className="bg-zinc-900 border-zinc-700 text-white focus-visible:ring-orange-500 font-mono" 
+                            />
+                            <p className="text-[10px] text-zinc-500">Must be totally unique (e.g. {affiliate.name.split(' ')[0].toLowerCase()}_camp2)</p>
+                        </div>
+                    </div>
+                    
+                    <DialogFooter className="mt-2">
+                        <Button variant="outline" onClick={() => setIsAddCampaignOpen(false)} disabled={isLoading} className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700">Cancel</Button>
+                        <Button onClick={handleAddCampaign} disabled={isLoading || !newCampaignId || !newCampaignRefCode} className="bg-orange-600 hover:bg-orange-500 text-white font-semibold">
+                            {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</> : 'Add to Campaign'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Pending Approval Review Dialog */}
             <Dialog open={isPendingOpen} onOpenChange={setIsPendingOpen}>

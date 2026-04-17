@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Zap, BellRing } from "lucide-react";
+import { Zap, BellRing, Wallet } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { PayoutDatePicker } from "@/components/PayoutDatePicker";
 import { PayoutBatchSelector } from "./PayoutBatchSelector";
@@ -43,18 +43,22 @@ export default async function GeneratePayoutsPage({
 
     // Calculate dynamic amount owed per affiliate precisely against targetDate
     const pendingSumMap: Record<string, number> = {};
+    let totalPaid = 0;
+
     for (const c of commissions || []) {
         const commDate = new Date(c.created_at);
-        // Exclude commissions created after the target Payout Date threshold
         if (!isAllTime && commDate > targetDate) continue;
 
-        // Check if a payout executed after this commission was logged
         const dates = payoutMap[c.affiliate_id] || [];
         const settled = dates.some(pd => pd >= commDate);
         if (!settled) {
             pendingSumMap[c.affiliate_id] = (pendingSumMap[c.affiliate_id] || 0) + Number(c.commission_amount);
+        } else {
+            totalPaid += Number(c.commission_amount);
         }
     }
+
+    const totalReadyToPay = Object.values(pendingSumMap).reduce((a, b) => a + (b || 0), 0);
 
     // Compute final affiliates to render
     const affiliates = (allAffiliates || [])
@@ -77,13 +81,27 @@ export default async function GeneratePayoutsPage({
 
     return (
         <div className="space-y-6 max-w-7xl font-sans">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
-                    <Zap className="w-5 h-5 text-amber-400" />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                        <Wallet className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-3xl font-extrabold text-white tracking-tight">Payout balances</h2>
+                        <p className="text-base text-zinc-400 font-medium tracking-wide mt-1">
+                            All commissions are calculated automatically
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">Generate Payouts</h2>
-                    <p className="text-sm text-zinc-400 font-medium tracking-wide border-l-2 border-amber-500/50 pl-2 ml-1 mt-1">Batch process outstanding commissions</p>
+                <div className="flex gap-6 sm:text-right mt-2 sm:mt-0">
+                    <div>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold mb-1">Ready to pay</p>
+                        <p className="text-2xl font-bold text-orange-400 tracking-tight">${totalReadyToPay.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold mb-1">Already paid</p>
+                        <p className="text-2xl font-bold text-zinc-300 tracking-tight">${totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
                 </div>
             </div>
 

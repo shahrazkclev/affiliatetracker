@@ -117,13 +117,13 @@ export default async function ReferralsPage({
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
-                        <GitMerge className="w-5 h-5 text-amber-400" />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <GitMerge className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">Referrals</h2>
-                        <p className="text-sm text-zinc-400 font-medium tracking-wide border-l-2 border-amber-500/50 pl-2 ml-1 mt-1">
-                            All referral records tracked by your affiliates
+                        <h2 className="text-3xl font-extrabold text-white tracking-tight">Sales from affiliates</h2>
+                        <p className="text-base text-zinc-400 font-medium tracking-wide mt-1">
+                            See exactly <span className="text-indigo-400 font-semibold">who brought this customer</span> and how much they earned
                         </p>
                     </div>
                 </div>

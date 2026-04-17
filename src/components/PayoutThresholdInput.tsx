@@ -23,14 +23,14 @@ export function PayoutThresholdInput({ initialValue = 0 }: { initialValue?: numb
     };
 
     return (
-        <div className="flex items-center gap-4">
-            <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 font-bold pointer-events-none">$</span>
+        <div className="flex items-center gap-3">
+            <div className="relative flex items-center">
+                <span className="absolute left-3 text-zinc-500 font-medium text-sm pointer-events-none">$</span>
                 <Input
                     type="number"
                     min="0"
                     step="1"
-                    className="pl-8 w-36 bg-zinc-950 border-zinc-800 text-zinc-100 font-mono focus-visible:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="pl-7 w-28 bg-zinc-950 border-zinc-800 text-zinc-100 font-mono text-sm focus-visible:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none rounded-md h-10"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     onKeyDown={(e) => {
@@ -42,17 +42,19 @@ export function PayoutThresholdInput({ initialValue = 0 }: { initialValue?: numb
             <button
                 onClick={handleApply}
                 disabled={value === initialValue.toString()}
-                className={`text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-md transition-all ${
+                className={`text-xs font-bold tracking-wide px-4 h-10 rounded-md transition-all flex items-center justify-center ${
                     value !== initialValue.toString() 
-                        ? "bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/20" 
-                        : "bg-zinc-800/80 text-zinc-500 cursor-not-allowed border border-zinc-800"
+                        ? "bg-amber-500 hover:bg-amber-400 text-amber-950 shadow-md shadow-amber-500/20" 
+                        : "bg-zinc-800/50 text-zinc-500 cursor-not-allowed border border-zinc-800/50"
                 }`}
             >
-                Update
+                UPDATE
             </button>
             
-            <span className="text-[11px] font-semibold text-zinc-600 uppercase font-sans tracking-wider border-l border-zinc-800 pl-4 ml-1">
-                Min Value
+            <div className="h-6 w-px bg-zinc-800 mx-1"></div>
+            
+            <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest leading-none">
+                Min Threshold
             </span>
         </div>
     );

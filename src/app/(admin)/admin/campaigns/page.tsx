@@ -31,12 +31,12 @@ export default async function CampaignsPage() {
         <div className="space-y-4 font-sans">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center shadow-lg shadow-black/50">
-                        <Megaphone className="w-5 h-5 text-orange-400" />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <Megaphone className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">Campaigns</h2>
-                        <p className="text-sm text-zinc-400 font-medium tracking-wide">Manage commission campaigns</p>
+                        <h2 className="text-3xl font-extrabold text-white tracking-tight">Strategic Campaigns</h2>
+                        <p className="text-base text-zinc-400 font-medium tracking-wide mt-1">Create a new campaign to test <span className="text-indigo-400 font-semibold">higher commissions</span> or special offers</p>
                     </div>
                 </div>
                 <AddCampaignDialog />
