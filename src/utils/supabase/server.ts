@@ -91,3 +91,28 @@ export async function getResolvedOrgId(): Promise<string | null> {
 
     return null;
 }
+
+export async function getActiveAffiliateProfile(orgId: string, email: string) {
+    const admin = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    
+    const { data: affiliates } = await admin
+        .from('affiliates')
+        .select('*, campaign:campaigns(name, landing_url), org:organizations(custom_domain)')
+        .eq('email', email)
+        .eq('org_id', orgId);
+
+    if (!affiliates || affiliates.length === 0) return null;
+
+    const cookieStore = await cookies();
+    const activeCampaignId = cookieStore.get("active_campaign_id")?.value;
+
+    if (activeCampaignId) {
+        const matched = affiliates.find(a => a.campaign_id === activeCampaignId);
+        if (matched) return matched;
+    }
+
+    return affiliates[0];
+}

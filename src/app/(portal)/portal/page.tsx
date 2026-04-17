@@ -1,4 +1,4 @@
-import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
+import { createClient, getResolvedOrgId, getActiveAffiliateProfile } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, MousePointerClick, Users, Wallet, Link as LinkIcon, Activity } from "lucide-react";
@@ -27,13 +27,13 @@ export default async function PortalHome() {
         redirect("/login?message=Organization not found.");
     }
 
-    // Find affiliate record for this user scoped to THIS specific organization
-    const { data: affiliate } = await admin
-        .from('affiliates')
-        .select('*, campaign:campaigns(name, landing_url), org:organizations(custom_domain)')
-        .eq('email', user?.email ?? '')
-        .eq('org_id', orgId)
-        .maybeSingle();
+    // Find affiliate record safely checking which campaign context is active
+    const affiliate = await getActiveAffiliateProfile(orgId, user.email || '');
+
+    if (!affiliate) {
+        // Technically an error state if they have no profiles
+        return <div className="p-8 text-center text-red-400">No active affiliate profile found. Please contact an administrator.</div>;
+    }
 
     // Commissions for this affiliate
     const { data: commissions } = await supabase

@@ -120,44 +120,107 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
     // 100% free checkouts might drop the customer_details email, fallback to a placeholder so it doesn't violate NOT NULL constraints
     const customerEmail = session.customer_details?.email || session.customer_email || `unknown_${session.id}@stripe.com`;
 
-    if (!rawRefCode) {
-        console.log('[webhook] checkout.session.completed — no client_reference_id, skipping commission');
-        return;
-    }
-
-    let refCode = rawRefCode;
+    let refCode = rawRefCode || null;
     let explicitAffiliateId = null;
     let trackingTag = null;
+    let matchedAffiliate: any = null;
 
-    if (rawRefCode.includes('---')) {
-        const parts = rawRefCode.split('---');
-        refCode = parts[0];
-        if (parts.length >= 2 && parts[1]) {
-            trackingTag = parts[1];
+    if (!rawRefCode) {
+        const discounts = session.total_details?.breakdown?.discounts || [];
+        if (discounts.length === 0) {
+            console.log('[webhook] checkout.session.completed — no client_reference_id and no discounts, skipping commission');
+            return;
         }
-        if (parts.length >= 3) {
-            explicitAffiliateId = parts[2];
+
+        console.log('[webhook] No client_reference_id but found discounts. Attempting promo code resolution...');
+        const stripeKey = org.stripe_secret_key || process.env.STRIPE_SECRET_KEY;
+
+        if (stripeKey) {
+            try {
+                const Stripe = require('stripe').default || require('stripe');
+                const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' });
+                const expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
+                    expand: ['total_details.breakdown.discounts.discount.promotion_code']
+                });
+
+                const expandedDiscounts = expandedSession.total_details?.breakdown?.discounts || [];
+                for (const d of expandedDiscounts) {
+                    const couponId = d.discount?.coupon?.id;
+                    const promoObj = d.discount?.promotion_code as any;
+                    const promoCodeText = promoObj?.code;
+
+                    if (promoCodeText || couponId) {
+                        let q = supabase
+                            .from('affiliates')
+                            .select('id, campaign_id, total_commission')
+                            .eq('org_id', org.id);
+                        
+                        // Prioritize matching the exact text typed by the customer, then the internal ID.
+                        if (promoCodeText) {
+                            q = q.eq('stripe_promo_code', promoCodeText);
+                        } else {
+                            q = q.eq('stripe_promo_id', couponId);
+                        }
+
+                        const { data: aff } = await q.maybeSingle();
+                        if (aff) {
+                            matchedAffiliate = aff;
+                            break; // Stop looking once we map a commission
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('[webhook] Error fetching expanded session for promo code:', e);
+            }
         }
-    }
 
-    // Find affiliate by referral_code or explicit ID
-    let query = supabase
-        .from('affiliates')
-        .select('id, campaign_id, total_commission')
-        .eq('org_id', org.id);
+        // Fallback: If SDK fails or no key, match via raw coupon.id
+        if (!matchedAffiliate && discounts[0]?.discount?.coupon?.id) {
+            const { data: aff } = await supabase
+                .from('affiliates')
+                .select('id, campaign_id, total_commission')
+                .eq('org_id', org.id)
+                .eq('stripe_promo_id', discounts[0].discount.coupon.id)
+                .maybeSingle();
+            if (aff) matchedAffiliate = aff;
+        }
 
-    if (explicitAffiliateId) {
-        query = query.eq('id', explicitAffiliateId);
+        if (!matchedAffiliate) {
+            console.log('[webhook] checkout.session.completed — no tracking link and no matching promo affiliate');
+            return;
+        }
+
+        explicitAffiliateId = matchedAffiliate.id;
     } else {
-        query = query.eq('referral_code', refCode);
+        if (rawRefCode.includes('---')) {
+            const parts = rawRefCode.split('---');
+            refCode = parts[0];
+            if (parts.length >= 2 && parts[1]) trackingTag = parts[1];
+            if (parts.length >= 3) explicitAffiliateId = parts[2];
+        }
+
+        // Find affiliate by referral_code or explicit ID
+        let query = supabase
+            .from('affiliates')
+            .select('id, campaign_id, total_commission')
+            .eq('org_id', org.id);
+
+        if (explicitAffiliateId) {
+            query = query.eq('id', explicitAffiliateId);
+        } else {
+            query = query.eq('referral_code', refCode);
+        }
+
+        const { data: affiliate } = await query.single();
+        matchedAffiliate = affiliate;
     }
 
-    const { data: affiliate } = await query.single();
-
-    if (!affiliate) {
-        console.warn(`[webhook] No affiliate found for ref code: ${rawRefCode}`);
+    if (!matchedAffiliate) {
+        console.warn(`[webhook] No affiliate found for tracking resolution (ref: ${rawRefCode})`);
         return;
     }
+    
+    const affiliate = matchedAffiliate;
 
     // Get campaign commission rate
     const { data: campaign } = affiliate.campaign_id
@@ -235,7 +298,17 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
 }
 
 async function handleSubscription(supabase: any, org: any, subscription: any) {
-    const refCode = subscription.metadata?.affiliate_ref;
+    let refCode = subscription.metadata?.affiliate_ref;
+    
+    if (!refCode) {
+        // Fallback to tracking via email in case metadata wasn't passed by customer implementation
+        const email = subscription.customer_email || (await resolveCustomerEmail(subscription.customer, org.stripe_secret_key));
+        if (!email) return;
+        
+        const { data: ref } = await supabase.from('referrals').select('affiliate(referral_code)').eq('customer_email', email).eq('org_id', org.id).maybeSingle();
+        if (ref?.affiliate?.referral_code) refCode = ref.affiliate.referral_code;
+    }
+
     if (!refCode) return;
 
     // Mimic checkout session handling with subscription amount
@@ -250,11 +323,34 @@ async function handleSubscription(supabase: any, org: any, subscription: any) {
     });
 }
 
+// Helper to resolve stripe customer emails cleanly
+async function resolveCustomerEmail(customerId: string, stripeKey: string) {
+    if (!customerId || !stripeKey) return null;
+    try {
+        const Stripe = require('stripe').default || require('stripe');
+        const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' });
+        const cust = await stripe.customers.retrieve(customerId);
+        return cust?.email || null;
+    } catch (e) {
+        return null;
+    }
+}
+
 async function handleInvoicePayment(supabase: any, org: any, invoice: any) {
     // Only handle subscription renewals, not the first payment (already handled by checkout.session)
     if (invoice.billing_reason !== 'subscription_cycle') return;
 
-    const refCode = invoice.subscription_details?.metadata?.affiliate_ref;
+    let refCode = invoice.subscription_details?.metadata?.affiliate_ref;
+    
+    if (!refCode) {
+        // Fallback to auto-matching past referrals via invoice customer email
+        const email = invoice.customer_email || (await resolveCustomerEmail(invoice.customer, org.stripe_secret_key));
+        if (!email) return;
+        
+        const { data: ref } = await supabase.from('referrals').select('affiliate(referral_code)').eq('customer_email', email).eq('org_id', org.id).maybeSingle();
+        if (ref?.affiliate?.referral_code) refCode = ref.affiliate.referral_code;
+    }
+
     if (!refCode) return;
 
     await handleCheckoutSession(supabase, org, {

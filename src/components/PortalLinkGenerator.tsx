@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from '@/utils/supabase/client';
 
+import { saveTrackingLinks } from '@/app/(portal)/portal/links/actions';
+
 const PLATFORMS = ['YouTube', 'Instagram', 'TikTok', 'Twitter/X', 'LinkedIn', 'Facebook', 'Blog', 'Podcast', 'Newsletter', 'Other'];
 
 interface TrackingLink {
@@ -52,13 +54,17 @@ export function PortalLinkGenerator({
     async function persistLinks(updated: TrackingLink[]) {
         if (!affiliateId) return;
         setIsSaving(true);
-        const supabase = createClient();
         const toSave = updated.map(({ copied: _c, ...rest }) => rest);
-        await supabase
-            .from('affiliates')
-            .update({ custom_tracking_links: toSave })
-            .eq('id', affiliateId);
-        setIsSaving(false);
+        
+        try {
+            const res = await saveTrackingLinks(affiliateId, toSave);
+            if (res.error) throw new Error(res.error);
+        } catch (e: any) {
+            console.error(e);
+            setLoadError('Failed to save link changes');
+        } finally {
+            setIsSaving(false);
+        }
     }
 
     function buildUrl(target: string, tag: string) {

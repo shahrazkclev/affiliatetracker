@@ -49,15 +49,15 @@ export default async function AdminDashboard() {
 
   const { data: campaigns } = await supabase.from("campaigns").select("*").eq('org_id', orgId);
 
-  // Recent referrals — 2-step fetch (no FK on referrals.affiliate_id)
-  const { data: rawRecentReferrals } = await supabase
-    .from("referrals")
-    .select("*")
+  // Recent referrals (actually recent sales/commissions) mapped to precise events
+  const { data: recentCommissions } = await supabase
+    .from("commissions")
+    .select("id, amount, revenue, status, affiliate_id, created_at, customer_email, referral:referrals(customer_email)")
     .eq('org_id', orgId)
     .order("created_at", { ascending: false })
     .limit(8);
 
-  const recentAffIds = [...new Set((rawRecentReferrals || []).map((r: any) => r.affiliate_id).filter(Boolean))];
+  const recentAffIds = [...new Set((recentCommissions || []).map((c: any) => c.affiliate_id).filter(Boolean))];
   const { data: recentAffiliates } = recentAffIds.length > 0
     ? await supabase.from("affiliates").select("*").in("id", recentAffIds)
     : { data: [] };
@@ -65,32 +65,33 @@ export default async function AdminDashboard() {
   const recentAffMap: Record<string, any> = {};
   for (const a of recentAffiliates || []) recentAffMap[a.id] = a;
 
-  const recentReferralsRaw = rawRecentReferrals || [];
-
-  const emailsToFetch = [...new Set(recentReferralsRaw.map((r: any) => r.customer_email || r.referred_email).filter(Boolean))];
-
-  const { data: commissionsData } = emailsToFetch.length > 0
-    ? await supabase.from("commissions").select("customer_email, revenue, amount").in("customer_email", emailsToFetch)
-    : { data: [] };
-
-  const commissionTotalsByEmail: Record<string, { rev: number; comm: number }> = {};
-  for (const c of commissionsData || []) {
-    if (c.customer_email) {
-      const e = c.customer_email.toLowerCase();
-      if (!commissionTotalsByEmail[e]) commissionTotalsByEmail[e] = { rev: 0, comm: 0 };
-      commissionTotalsByEmail[e].rev += parseFloat(c.revenue || "0");
-      commissionTotalsByEmail[e].comm += parseFloat(c.amount || "0");
-    }
+  // Track settlements to know if these are "paid" or "pending" dynamically
+  const { data: recentPayouts } = await supabase.from("payouts").select("affiliate_id, created_at").eq("org_id", orgId);
+  const payoutMap: Record<string, Date[]> = {};
+  for (const p of recentPayouts || []) {
+      if (!payoutMap[p.affiliate_id]) payoutMap[p.affiliate_id] = [];
+      payoutMap[p.affiliate_id].push(new Date(p.created_at));
   }
 
-  const recentReferrals = recentReferralsRaw.map((r: any) => {
-    const email = (r.customer_email || r.referred_email || "").toLowerCase();
-    const totals = commissionTotalsByEmail[email] || { rev: 0, comm: 0 };
+  const recentReferrals = (recentCommissions || []).map((c: any) => {
+    let email = c.customer_email;
+    if (!email && c.referral && !Array.isArray(c.referral)) {
+        email = c.referral.customer_email || "Unknown";
+    }
+
+    const dates = payoutMap[c.affiliate_id] || [];
+    const commDate = new Date(c.created_at);
+    const settled = dates.some(pd => pd >= commDate);
+    const effectiveStatus = settled ? 'paid' : (c.status || 'pending');
+
     return {
-      ...r,
-      totalRevenue: totals.rev,
-      totalCommission: totals.comm,
-      affiliate: r.affiliate_id ? recentAffMap[r.affiliate_id] ?? null : null,
+      id: c.id,
+      customer_email: email,
+      status: effectiveStatus,
+      totalRevenue: Number(c.revenue || 0),
+      totalCommission: Number(c.amount || 0),
+      affiliate: c.affiliate_id ? recentAffMap[c.affiliate_id] ?? null : null,
+      created_at: c.created_at
     };
   });
 
@@ -267,7 +268,7 @@ export default async function AdminDashboard() {
             <div className="divide-y divide-zinc-800/50">
               {recentReferrals.map((ref) => {
                 const aff = ref.affiliate as any;
-                const email = ref.customer_email || ref.referred_email || "—";
+                const email = ref.customer_email || "—";
                 return (
                     <div key={ref.id} className="flex items-center justify-between px-6 py-3 hover:bg-zinc-800/20 transition-colors group/row">
                       <div className="flex items-center gap-3 min-w-0">

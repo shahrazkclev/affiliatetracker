@@ -1,4 +1,4 @@
-import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
+import { createClient, getResolvedOrgId, getActiveAffiliateProfile } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { PortalLinkGenerator } from "@/components/PortalLinkGenerator";
 import { Link as LinkIcon } from "lucide-react";
@@ -23,12 +23,7 @@ export default async function PortalLinksPage() {
         redirect("/login?message=Organization not found.");
     }
 
-    const { data: affiliate } = await admin
-        .from('affiliates')
-        .select('*, campaign:campaigns(name, landing_url), org:organizations(custom_domain)')
-        .eq('email', user?.email ?? '')
-        .eq('org_id', orgId)
-        .maybeSingle();
+    const affiliate = await getActiveAffiliateProfile(orgId, user.email || '');
 
     if (!affiliate) return null;
 

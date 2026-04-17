@@ -1,4 +1,4 @@
-import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
+import { createClient, getResolvedOrgId, getActiveAffiliateProfile } from "@/utils/supabase/server";
 import { Users, Activity, Network } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pagination } from "@/components/Pagination";
@@ -15,12 +15,7 @@ export default async function AffiliateReferralsPage({ searchParams }: { searchP
     const orgId = await getResolvedOrgId();
     if (!orgId) redirect("/login");
 
-    const { data: affiliate } = await supabase
-        .from('affiliates')
-        .select('*, campaign:campaigns(show_customer_email)')
-        .eq('user_id', user.id)
-        .eq('org_id', orgId)
-        .single();
+    const affiliate = await getActiveAffiliateProfile(orgId, user.email || '');
         
     if (!affiliate) return null;
 

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
+import { createClient, getResolvedOrgId, getActiveAffiliateProfile } from "@/utils/supabase/server";
 import { NotificationSettings } from "./NotificationSettings";
 import { redirect } from "next/navigation";
 
@@ -15,12 +15,9 @@ export default async function AffiliateSettingsPage() {
     if (!orgId) redirect("/login");
 
     // Fetch the current affiliate's data
-    const { data: affiliate } = await supabase
-        .from('affiliates')
-        .select('*')
-        .eq('email', user.email)
-        .eq('org_id', orgId)
-        .single();
+    const affiliate = await getActiveAffiliateProfile(orgId, user.email || '');
+
+    if (!affiliate) redirect("/portal");
 
     // Split name for first/last name fields
     const nameParts = affiliate?.name ? affiliate.name.split(' ') : [];

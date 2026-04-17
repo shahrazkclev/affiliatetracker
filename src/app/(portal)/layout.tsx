@@ -3,6 +3,9 @@ import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { CampaignSwitcher } from "@/components/CampaignSwitcher";
+import { cookies } from "next/headers";
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 async function getOrgBranding() {
     try {
@@ -33,6 +36,26 @@ export default async function PortalLayout({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         redirect("/login");
+    }
+
+    const orgId = await getResolvedOrgId();
+    let profiles: any[] = [];
+    let activeCampaignId: string | undefined = undefined;
+
+    if (orgId && user.email) {
+        const admin = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+        const { data } = await admin
+            .from("affiliates")
+            .select("id, campaign_id, name, campaign:campaigns(name)")
+            .eq("org_id", orgId)
+            .eq("email", user.email);
+        
+        profiles = data || [];
+        const cookieStore = await cookies();
+        activeCampaignId = cookieStore.get("active_campaign_id")?.value;
     }
 
     const branding = await getOrgBranding();
@@ -90,6 +113,12 @@ export default async function PortalLayout({
                                 </svg>
                             </span>
                             Affiliate Mode Active
+                            {profiles.length > 1 && (
+                                <CampaignSwitcher 
+                                    profiles={profiles} 
+                                    activeCampaignId={activeCampaignId} 
+                                />
+                            )}
                         </div>
                         <ProfileMenu />
                     </header>

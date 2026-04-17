@@ -1,4 +1,4 @@
-import { createClient, getResolvedOrgId } from "@/utils/supabase/server";
+import { createClient, getResolvedOrgId, getActiveAffiliateProfile } from "@/utils/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wallet, ClockIcon, CheckCircle2, AlertCircle } from "lucide-react";
 import { PortalPayoutActions } from "./PortalPayoutActions";
@@ -18,12 +18,8 @@ export default async function AffiliatePayoutsPage({ searchParams }: { searchPar
     const orgId = await getResolvedOrgId();
     if (!orgId) redirect("/login");
 
-    const { data: affiliate } = await supabase
-        .from('affiliates')
-        .select('id, name, payout_email, payout_threshold, total_commission')
-        .eq('email', user.email ?? '')
-        .eq('org_id', orgId)
-        .maybeSingle();
+    const affiliate = await getActiveAffiliateProfile(orgId, user.email || '');
+    if (!affiliate) redirect("/portal");
 
     // All payouts this affiliate has received
     const { data: payouts } = await supabase

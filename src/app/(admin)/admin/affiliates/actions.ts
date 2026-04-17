@@ -21,18 +21,6 @@ export async function addAffiliateDirectly(formData: FormData): Promise<{ error?
     const stripePromoId = (formData.get('stripe_promo_id') as string)?.trim() || null;
     const stripePromoCode = (formData.get('stripe_promo_code') as string)?.trim() || null;
 
-    if (!name || !email || !referralCode) return { error: 'Name, email, and referral code are required.' };
-
-    // Check email not already taken
-    const { data: existingAffiliate } = await admin
-        .from('affiliates').select('id').eq('email', email).maybeSingle();
-    if (existingAffiliate) return { error: 'An affiliate with this email already exists.' };
-
-    // Check referral code not already taken
-    const { data: taken } = await admin
-        .from('affiliates').select('id').eq('referral_code', referralCode).maybeSingle();
-    if (taken) return { error: 'That referral code is already taken.' };
-
     // Get org_id from campaign, or from default campaign
     let orgId: string | null = null;
     if (campaignId) {
@@ -43,15 +31,59 @@ export async function addAffiliateDirectly(formData: FormData): Promise<{ error?
         orgId = defCamp?.org_id ?? null;
     }
 
-    // Create auth user (no password — they'll set it on first login via magic link)
-    const { data: authData, error: authError } = await admin.auth.admin.createUser({
-        email,
-        email_confirm: true,
-    });
-    if (authError || !authData.user) return { error: authError?.message || 'Could not create account.' };
+    if (!name || !email || !referralCode) return { error: 'Name, email, and referral code are required.' };
+
+    // Check referral code not already taken across the entire system
+    const { data: taken } = await admin
+        .from('affiliates').select('id').eq('referral_code', referralCode).maybeSingle();
+    if (taken) return { error: 'That referral code is already taken.' };
+
+    let userId: string | null = null;
+
+    // Check if they have an existing profile
+    const { data: existingProfiles } = await admin
+        .from('affiliates')
+        .select('user_id')
+        .eq('email', email)
+        .limit(1);
+
+    if (existingProfiles && existingProfiles.length > 0) {
+        userId = existingProfiles[0].user_id;
+
+        // Ensure they aren't already mapped to THIS specific campaign
+        const { data: sameCampaign } = await admin
+            .from('affiliates')
+            .select('id')
+            .eq('email', email)
+            .eq('org_id', orgId)
+            .eq('campaign_id', campaignId || null)
+            .maybeSingle();
+
+        if (sameCampaign) {
+            return { error: 'This partner is already assigned to this campaign.' };
+        }
+    } else {
+        // Create auth user (no password — they'll set it on first login via magic link)
+        const { data: authData, error: authError } = await admin.auth.admin.createUser({
+            email,
+            email_confirm: true,
+        });
+        if (authError || !authData.user) {
+            // Fallback in case they existed in Auth but not Affiliates
+            const { data: existingAuth } = await admin.auth.admin.listUsers();
+            const matchedUser = existingAuth?.users.find((u: any) => u.email === email);
+            if (matchedUser) {
+                userId = matchedUser.id;
+            } else {
+                return { error: authError?.message || 'Could not create account.' };
+            }
+        } else {
+            userId = authData.user.id;
+        }
+    }
 
     const { error: insertError } = await admin.from('affiliates').insert({
-        user_id: authData.user.id,
+        user_id: userId,
         org_id: orgId,
         campaign_id: campaignId || null,
         name,
@@ -63,7 +95,6 @@ export async function addAffiliateDirectly(formData: FormData): Promise<{ error?
     });
 
     if (insertError) {
-        await admin.auth.admin.deleteUser(authData.user.id);
         return { error: 'Could not add affiliate: ' + insertError.message };
     }
 
