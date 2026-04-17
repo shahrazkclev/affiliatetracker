@@ -42,7 +42,7 @@ export default async function GlobalSettingsPage() {
             smtp_from_email, 
             plan_name, 
             is_free_forever,
-            saas_plans ( name, custom_smtp_access )
+            saas_plans ( name )
         `)
         .limit(1)
         .single();
@@ -52,12 +52,11 @@ export default async function GlobalSettingsPage() {
     }
 
     const linkedPlan: any = org?.saas_plans;
-    const currentPlanName = Array.isArray(linkedPlan) ? linkedPlan[0]?.name : linkedPlan?.name;
+    const currentPlanName = (Array.isArray(linkedPlan) ? linkedPlan[0]?.name : linkedPlan?.name) || '';
 
     const planName = currentPlanName || org?.plan_name || '';
-    const isPro = planName.toLowerCase().includes('pro') || org?.is_free_forever === true;
-    const hasSmtpAccess = Array.isArray(linkedPlan) ? linkedPlan[0]?.custom_smtp_access : linkedPlan?.custom_smtp_access;
-    const finalSmtpAccess = hasSmtpAccess === true || isPro;
+    const isPro = planName.toLowerCase().includes('pro') || planName.toLowerCase().includes('scale') || planName.toLowerCase().includes('growth') || org?.is_free_forever === true;
+    const finalSmtpAccess = isPro;
 
     const portalUrl = org?.custom_domain 
         ? `https://${org.custom_domain}` 

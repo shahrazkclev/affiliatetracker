@@ -42,8 +42,10 @@ export default function PortalConfigPage() {
             if (config?.theme) setTheme(config.theme);
             if (config?.logo_sidebar_height) setSidebarHeight(config.logo_sidebar_height);
             if (config?.logo_email_height) setEmailHeight(config.logo_email_height);
-            const sp = Array.isArray(config?.saas_plans) ? config?.saas_plans[0] : config?.saas_plans as any;
-            setIsPro(sp?.custom_domain_access === true || config?.plan_name === 'pro' || config?.is_free_forever === true);
+            const currentPlanName = (Array.isArray(config?.saas_plans) ? config?.saas_plans[0]?.name : (config?.saas_plans as any)?.name) || '';
+            const planNameStr = currentPlanName || config?.plan_name || '';
+            const isProPlan = planNameStr.toLowerCase().includes('pro') || planNameStr.toLowerCase().includes('scale') || planNameStr.toLowerCase().includes('growth') || config?.is_free_forever === true;
+            setIsPro(isProPlan);
         });
     }, []);
 
