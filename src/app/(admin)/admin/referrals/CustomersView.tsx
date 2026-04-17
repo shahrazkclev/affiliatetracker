@@ -1,9 +1,9 @@
 import { createClient } from "@/utils/supabase/server";
 import { User, Activity, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CopyButton } from "@/components/CopyButton";
+import { Pagination } from "@/components/Pagination";
 
-export async function CustomersView({ orgId, searchQuery }: { orgId: string, searchQuery: string }) {
+export async function CustomersView({ orgId, searchQuery, currentPage, PAGE_SIZE }: { orgId: string, searchQuery: string, currentPage: number, PAGE_SIZE: number }) {
     const supabase = await createClient();
     
     // Fetch referrals (which represent customers brought by affiliates)
@@ -24,6 +24,9 @@ export async function CustomersView({ orgId, searchQuery }: { orgId: string, sea
 
     const totalCustomers = customers.length;
     const payingCustomers = customers.filter(c => c.status === 'paying' || c.status === 'active' || (c.commissions && c.commissions.length > 0)).length;
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const customersSegment = customers.slice(start, start + PAGE_SIZE);
 
     return (
         <div className="space-y-6">
@@ -68,14 +71,14 @@ export async function CustomersView({ orgId, searchQuery }: { orgId: string, sea
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-800/50">
-                            {customers.length === 0 ? (
+                            {customersSegment.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="px-6 py-12 text-center">
                                         <p className="text-zinc-500 font-medium">No customers found.</p>
                                     </td>
                                 </tr>
                             ) : (
-                                customers.map((customer: any) => {
+                                customersSegment.map((customer: any) => {
                                     const totalCommission = customer.commissions?.reduce((sum: number, c: any) => sum + Number(c.amount || 0), 0) || 0;
                                     const isActive = customer.status === 'paying' || customer.status === 'active' || totalCommission > 0;
                                     
@@ -84,7 +87,6 @@ export async function CustomersView({ orgId, searchQuery }: { orgId: string, sea
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-medium text-zinc-200">{customer.customer_email}</span>
-                                                <CopyButton text={customer.customer_email} />
                                             </div>
                                             {customer.stripe_customer_id && (
                                                 <div className="text-[10px] text-zinc-500 font-mono mt-1 flex items-center gap-1">
@@ -103,12 +105,16 @@ export async function CustomersView({ orgId, searchQuery }: { orgId: string, sea
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-yellow-500'}`} />
-                                                <span className={`text-xs font-medium uppercase tracking-wider ${isActive ? 'text-emerald-400' : 'text-yellow-500'}`}>
-                                                    {customer.status || 'Trialing'}
-                                                </span>
-                                            </div>
+                                            {customer.status ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-yellow-500'}`} />
+                                                    <span className={`text-xs font-medium uppercase tracking-wider ${isActive ? 'text-emerald-400' : 'text-yellow-500'}`}>
+                                                        {customer.status}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-zinc-500">—</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="font-mono text-zinc-300">${totalCommission.toFixed(2)}</span>
@@ -125,6 +131,17 @@ export async function CustomersView({ orgId, searchQuery }: { orgId: string, sea
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination */}
+                {customers.length > PAGE_SIZE && (
+                    <div className="p-4 border-t border-zinc-800 bg-zinc-950/50">
+                        <Pagination
+                            totalCount={customers.length}
+                            pageSize={PAGE_SIZE}
+                            currentPage={currentPage}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );

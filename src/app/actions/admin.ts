@@ -405,3 +405,20 @@ export async function createManualCommission(formData: FormData) {
     return { success: true };
 }
 
+
+export async function updateReferralStatus(id: string, status: 'pending' | 'paid') {
+    const supabase = await createClient();
+    const { error: rError } = await supabase.from('referrals').update({ status }).eq('id', id);
+    if (!rError) {
+        await supabase.from('commissions').update({ status }).eq('referral_id', id);
+    }
+    revalidatePath('/admin/referrals');
+    return { success: !rError, error: rError?.message };
+}
+
+export async function deleteReferral(id: string) {
+    const supabase = await createClient();
+    const { error } = await supabase.from('referrals').delete().eq('id', id);
+    revalidatePath('/admin/referrals');
+    return { success: !error, error: error?.message };
+}

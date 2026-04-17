@@ -2,7 +2,7 @@ import { Users, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyButton } from "@/components/CopyButton";
 import { AffiliateQuickViewButton } from "./AffiliateQuickViewButton";
-import { AffiliateActionsCell } from "@/app/(admin)/admin/affiliates/AffiliateActionsCell";
+import { ReferralActionsCell } from "./ReferralActionsCell";
 import { Pagination } from "@/components/Pagination";
 
 export function SalesView({ processedReferrals, tabCounts, currentPage, PAGE_SIZE, campaigns, allAffiliates }: any) {
@@ -71,15 +71,11 @@ export function SalesView({ processedReferrals, tabCounts, currentPage, PAGE_SIZ
                                         <td className="px-6 py-4 whitespace-nowrap text-zinc-200">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-medium text-amber-100">{r.customer_email || '—'}</span>
-                                                <CopyButton text={r.customer_email} />
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {r.affiliate ? (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-zinc-300 font-medium">{r.affiliate.name}</span>
-                                                    <AffiliateQuickViewButton affiliate={r.affiliate} campaigns={campaigns} />
-                                                </div>
+                                                <AffiliateQuickViewButton affiliate={r.affiliate} campaigns={campaigns} />
                                             ) : (
                                                 <span className="text-zinc-500">—</span>
                                             )}
@@ -98,12 +94,9 @@ export function SalesView({ processedReferrals, tabCounts, currentPage, PAGE_SIZ
                                                 {r.status === 'paid' ? 'Paid' : 'Pending'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        <td className="px-6 py-4 text-center">
                                             {r.affiliate ? (
-                                                <AffiliateActionsCell 
-                                                    affiliate={r.affiliate} 
-                                                    campaigns={campaigns} 
-                                                />
+                                                <ReferralActionsCell referral={r} />
                                             ) : (
                                                 <span className="text-zinc-600 text-xs text-center w-full block">—</span>
                                             )}
