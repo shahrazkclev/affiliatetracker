@@ -157,6 +157,49 @@ export async function POST(req: Request) {
             _rawHtmlOverride: true 
         } as any);
 
+        // --- NEW: Notify Organization Owners purely on sales updates ---
+        if (eventType === 'new_commission' && orgId) {
+            try {
+                const amountDue = Number(record.amount || record.commission_amount || 0).toFixed(2);
+                const custEmail = record.customer_email || record.referred_email || 'Unknown Customer';
+                
+                // Fetch all owners of this tenant
+                const { data: owners } = await supabase
+                    .from('team_members')
+                    .select('user_id')
+                    .eq('org_id', orgId)
+                    .eq('role', 'owner');
+
+                if (owners && owners.length > 0) {
+                    for (const owner of owners) {
+                        const { data: adminData } = await supabase.auth.admin.getUserById(owner.user_id);
+                        const ownerEmail = adminData?.user?.email;
+                        
+                        if (ownerEmail) {
+                            console.log(`[Webhook Events] Dispatching Admin notification to ${ownerEmail}`);
+                            await dispatchEmail(orgId, {
+                                to: ownerEmail,
+                                subject: 'New Affiliate Sale! 🎉',
+                                html: `
+                                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;">
+                                    <h2 style="color: #111827; margin-top: 0;">New Sale via Affiliate!</h2>
+                                    <p style="color: #4b5563; font-size: 16px;">Your partner <strong>${affiliateName}</strong> just generated a new commission.</p>
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 20px; background:#f9fafb; border:1px solid #f3f4f6; border-radius:8px;">
+                                        <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb;"><strong style="color: #6b7280; font-size: 12px; text-transform: uppercase;">Customer</strong><br/><span style="color: #111827; font-size: 15px;">${custEmail}</span></td></tr>
+                                        <tr><td style="padding: 12px 16px;"><strong style="color: #6b7280; font-size: 12px; text-transform: uppercase;">Commission Logged</strong><br/><span style="color: #10b981; font-size: 16px; font-weight: bold;">$${amountDue}</span></td></tr>
+                                    </table>
+                                    <p style="color: #9ca3af; font-size: 13px; margin-top: 24px;">Log in to your Admin Dashboard to view more details.</p>
+                                </div>`,
+                                _rawHtmlOverride: true
+                            } as any);
+                        }
+                    }
+                }
+            } catch (adminFailErr) {
+                console.error('[Webhook Events] Failed to send Admin Notification:', adminFailErr);
+            }
+        }
+
         return NextResponse.json({ success: true, message: "Email sent natively" });
 
     } catch (error: any) {
