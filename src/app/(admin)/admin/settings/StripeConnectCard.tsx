@@ -161,17 +161,22 @@ export function StripeConnectCard() {
                 {/* Connect Form */}
                 <form onSubmit={handleConnect} className="space-y-3">
                     <div className="space-y-1.5">
-                        <Label className="text-zinc-400 text-xs uppercase tracking-wider font-semibold">
-                            Stripe Secret Key
+                        <Label className="text-zinc-400 text-xs uppercase tracking-wider font-semibold flex items-center justify-between">
+                            <span>Stripe Restricted API Key</span>
                         </Label>
+                        <p className="text-[11px] text-zinc-500 mb-2 leading-relaxed">
+                            For security, please provide a Restricted API Key (sk_rk_...). Ensure it has <strong>Read</strong> access to:
+                            <br/><span className="font-mono text-indigo-400">Checkout Sessions</span>, <span className="font-mono text-indigo-400">Customers</span>, <span className="font-mono text-indigo-400">Invoices</span>, <span className="font-mono text-indigo-400">Subscriptions</span>
+                            <br/>and <strong>Write</strong> access to: <span className="font-mono text-indigo-400">Webhooks</span>.
+                        </p>
                         <div className="relative">
                             <Input
                                 name="stripe_secret_key"
                                 type={showKey ? 'text' : 'password'}
                                 value={keyInput}
                                 onChange={e => setKeyInput(e.target.value)}
-                                placeholder="sk_live_... or sk_test_..."
-                                className="bg-zinc-950 border-zinc-800 text-zinc-200 font-mono text-sm pr-10 focus-visible:ring-indigo-500/50"
+                                placeholder="sk_test_... or sk_rk_..."
+                                className="bg-zinc-950 border-zinc-800 text-zinc-200 font-mono text-sm pr-10 focus-visible:ring-indigo-500/50 mt-1"
                             />
                             <button
                                 type="button"

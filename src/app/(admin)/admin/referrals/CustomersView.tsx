@@ -6,27 +6,41 @@ import { Pagination } from "@/components/Pagination";
 export async function CustomersView({ orgId, searchQuery, currentPage, PAGE_SIZE }: { orgId: string, searchQuery: string, currentPage: number, PAGE_SIZE: number }) {
     const supabase = await createClient();
     
-    // Fetch referrals (which represent customers brought by affiliates)
-    let query = supabase.from("referrals").select("id, customer_email, stripe_customer_id, status, created_at, affiliate:affiliates(name, email, referral_code), commissions(amount)").eq("org_id", orgId).order("created_at", { ascending: false }).limit(5000);
-    
-    const { data: rawCustomers } = await query;
-    let customers = rawCustomers || [];
+    const start = (currentPage - 1) * PAGE_SIZE;
+
+    // Get exact total counts for summaries (fast, without loading rows)
+    const { count: totalCustomersCount } = await supabase
+        .from('referrals')
+        .select('*', { count: 'exact', head: true })
+        .eq('org_id', orgId);
+
+    const { count: payingCustomersCount } = await supabase
+        .from('referrals')
+        .select('*', { count: 'exact', head: true })
+        .eq('org_id', orgId)
+        .in('status', ['paying', 'active', 'paid']);
+
+    // Build the query with actual database-level pagination
+    let query = supabase
+        .from("referrals")
+        .select("id, customer_email, stripe_customer_id, status, created_at, affiliate:affiliates(name, email, referral_code), commissions(amount)", { count: 'exact' })
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false });
 
     if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        customers = customers.filter((c: any) => 
-            c.customer_email?.toLowerCase().includes(q) ||
-            c.affiliate?.name?.toLowerCase().includes(q) ||
-            c.affiliate?.email?.toLowerCase().includes(q) ||
-            c.stripe_customer_id?.toLowerCase().includes(q)
-        );
+        // Because of joined tables (affiliates), filtering across joins dynamically is limited in standard postgrest without a view.
+        // If we strictly search local columns, it is much faster:
+        query = query.or(`customer_email.ilike.%${searchQuery}%,stripe_customer_id.ilike.%${searchQuery}%`);
     }
 
-    const totalCustomers = customers.length;
-    const payingCustomers = customers.filter(c => c.status === 'paying' || c.status === 'active' || (c.commissions && c.commissions.length > 0)).length;
-
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const customersSegment = customers.slice(start, start + PAGE_SIZE);
+    query = query.range(start, start + PAGE_SIZE - 1);
+    
+    // Execute query
+    const { data: rawCustomers, count: filteredCount } = await query;
+    const customersSegment = rawCustomers || [];
+    
+    const totalCustomers = totalCustomersCount || 0;
+    const payingCustomers = payingCustomersCount || 0;
 
     return (
         <div className="space-y-6">
@@ -132,16 +146,17 @@ export async function CustomersView({ orgId, searchQuery, currentPage, PAGE_SIZE
                     </table>
                 </div>
 
-                {/* Pagination */}
-                {customers.length > PAGE_SIZE && (
-                    <div className="p-4 border-t border-zinc-800 bg-zinc-950/50">
-                        <Pagination
-                            totalCount={customers.length}
-                            pageSize={PAGE_SIZE}
+                <div className="pt-4 border-t border-zinc-800/50">
+                {filteredCount && filteredCount > PAGE_SIZE && (
+                    <div className="flex justify-between items-center px-4 w-full">
+                        <Pagination 
+                            totalCount={filteredCount} 
+                            pageSize={PAGE_SIZE} 
                             currentPage={currentPage}
                         />
                     </div>
                 )}
+                </div>
             </div>
         </div>
     );

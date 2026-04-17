@@ -42,7 +42,7 @@ export default async function GlobalSettingsPage() {
             smtp_from_email, 
             plan_name, 
             is_free_forever,
-            saas_plans ( name )
+            saas_plans ( name, custom_smtp_access )
         `)
         .limit(1)
         .single();
@@ -56,6 +56,8 @@ export default async function GlobalSettingsPage() {
 
     const planName = currentPlanName || org?.plan_name || '';
     const isPro = planName.toLowerCase().includes('pro') || org?.is_free_forever === true;
+    const hasSmtpAccess = Array.isArray(linkedPlan) ? linkedPlan[0]?.custom_smtp_access : linkedPlan?.custom_smtp_access;
+    const finalSmtpAccess = hasSmtpAccess === true || isPro;
 
     const portalUrl = org?.custom_domain 
         ? `https://${org.custom_domain}` 
@@ -109,7 +111,7 @@ export default async function GlobalSettingsPage() {
                 {/* Right Column */}
                 <div className="space-y-6">
                     <TrackingSnippetCard portalUrl={portalUrl} orgId={org?.id} />
-                    <SmtpSettingsCard currentConfig={org || {}} isPro={isPro} />
+                    <SmtpSettingsCard currentConfig={org || {}} hasSmtpAccess={finalSmtpAccess} />
                 </div>
 
             </div>

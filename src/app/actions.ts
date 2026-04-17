@@ -96,6 +96,22 @@ export async function submitAffiliateApplication(formData: FormData): Promise<{ 
 
     if (taken) return { error: 'That referral code is taken. Please choose another.' };
 
+    // --- ENFORCE SAAS TIER AFFILIATE LIMITS ---
+    const { data: orgInfo } = await admin
+        .from('organizations')
+        .select('saas_plans(max_affiliates)')
+        .eq('id', orgId)
+        .single();
+    
+    const maxAffiliates = (orgInfo?.saas_plans as any)?.max_affiliates;
+    if (maxAffiliates !== null && maxAffiliates !== undefined) {
+        const { count } = await admin.from('affiliates').select('*', { count: 'exact', head: true }).eq('org_id', orgId);
+        if ((count || 0) >= maxAffiliates) {
+            return { error: 'This organization is currently not accepting new affiliates.' };
+        }
+    }
+    // ------------------------------------------
+
     const { data: campaign } = await admin
         .from('campaigns')
         .select('id, org_id')

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { verifyAndPromptRevenueUpgrade } from "@/lib/limits";
 
 // Stripe sends the raw body for signature verification — must disable body parsing
 export const runtime = 'nodejs';
@@ -254,7 +255,7 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
                 affiliate_id: affiliate.id,
                 customer_email: customerEmail,
                 stripe_customer_id: session.customer || null,
-                status: 'pending',
+                status: session.mode === 'subscription' ? 'active' : null,
                 sub_id: trackingTag,
                 created_at: new Date().toISOString(),
             }).select('id').single();
@@ -295,6 +296,9 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
         .eq('id', affiliate.id);
 
     console.log(`[webhook] ✓ Commission $${commissionAmount} created for affiliate ${affiliate.id} (ref: ${refCode})`);
+    
+    // Background execution: check revenue limits and notify organization admin
+    verifyAndPromptRevenueUpgrade(org.id).catch(err => console.error('[webhook limits] error', err));
 }
 
 async function handleSubscription(supabase: any, org: any, subscription: any) {

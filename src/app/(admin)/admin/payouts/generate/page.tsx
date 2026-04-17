@@ -80,7 +80,7 @@ export default async function GeneratePayoutsPage({
 
 
     return (
-        <div className="space-y-6 max-w-7xl font-sans">
+        <div className="space-y-6 w-full max-w-full font-sans">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-500/20">

@@ -10,8 +10,19 @@ import { saveSmtpSettings } from "./smtp-settings-actions";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Lock } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { useRouter } from "next/navigation";
 
-export function SmtpSettingsCard({ currentConfig, isPro }: { currentConfig: any, isPro?: boolean }) {
+interface Props {
+    currentConfig: any;
+    hasSmtpAccess?: boolean;
+}
+
+export function SmtpSettingsCard({ currentConfig, hasSmtpAccess }: Props) {
+    const router = useRouter();
+    const [showFields, setShowFields] = useState<boolean>(
+        hasSmtpAccess ? (currentConfig?.smtp_host !== null && currentConfig?.smtp_host !== undefined && currentConfig?.smtp_host !== '') : false
+    );
     const [host, setHost] = useState(currentConfig?.smtp_host || '');
     const [port, setPort] = useState(currentConfig?.smtp_port?.toString() || '');
     const [userStr, setUserStr] = useState(currentConfig?.smtp_user || '');
@@ -25,7 +36,7 @@ export function SmtpSettingsCard({ currentConfig, isPro }: { currentConfig: any,
         e.preventDefault();
         setMsg(null);
         startTransition(async () => {
-            const res = await saveSmtpSettings(host, port, userStr, pass, fromEmail);
+            const res = await saveSmtpSettings(showFields ? host : null, showFields ? port : null, showFields ? userStr : null, showFields ? pass : null, showFields ? fromEmail : null);
             setMsg({ ok: res.success, text: res.success ? 'SMTP Settings Saved Successfully!' : (res.error || 'Failed to save.') });
         });
     }
@@ -46,7 +57,7 @@ export function SmtpSettingsCard({ currentConfig, isPro }: { currentConfig: any,
                 </CardTitle>
                 <CardDescription className="text-zinc-500 text-[11px] font-mono mt-1 flex justify-between items-center">
                     <span>Send platform emails (invites, payout limits) through your own domain explicitly.</span>
-                    {!isPro && (
+                    {!hasSmtpAccess && (
                         <span className="flex items-center gap-1.5 text-amber-500/80 bg-amber-500/10 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">
                             <Lock className="w-3 h-3" /> PRO FEATURE
                         </span>
@@ -54,23 +65,22 @@ export function SmtpSettingsCard({ currentConfig, isPro }: { currentConfig: any,
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-5 flex flex-col gap-4 relative">
-                {!isPro && (
+                {!hasSmtpAccess && (
                     <div className="absolute inset-x-0 bottom-0 top-0 z-20 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-[2px] rounded-b-xl border-t border-zinc-800/50">
                         <div className="flex flex-col items-center text-center p-6 bg-zinc-900 border border-zinc-800 rounded-xl max-w-[280px] shadow-2xl">
                             <div className="w-10 h-10 bg-amber-500/10 rounded-full flex items-center justify-center mb-3">
                                 <Lock className="w-5 h-5 text-amber-500" />
                             </div>
-                            <h3 className="text-sm font-semibold text-white mb-2">Upgrade to Pro</h3>
-                            <p className="text-xs text-zinc-400 mb-4 font-normal">Custom SMTP configuration is exclusively available on the Pro plan.</p>
+                            <h3 className="text-sm font-semibold text-white mb-2">Upgrade to Scale Plan</h3>
+                            <p className="text-xs text-zinc-400 mb-4 font-normal">Custom SMTP configuration is only available on the Scale tier.</p>
                             <Link href="/admin/billing" className="w-full">
                                 <Button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold h-9 text-xs transition-colors shadow-[0_0_15px_rgba(245,158,11,0.15)] hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]">
-                                    View Billing Options
+                                    View Options
                                 </Button>
                             </Link>
                         </div>
                     </div>
                 )}
-                
                 <form onSubmit={handleSave} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
@@ -141,10 +151,10 @@ export function SmtpSettingsCard({ currentConfig, isPro }: { currentConfig: any,
                         </div>
                     )}
 
-                    <motion.div whileHover={{ scale: (isPending || !isPro) ? 1 : 1.01 }} whileTap={{ scale: (isPending || !isPro) ? 1 : 0.98 }}>
+                    <motion.div whileHover={{ scale: (isPending || !hasSmtpAccess) ? 1 : 1.01 }} whileTap={{ scale: (isPending || !hasSmtpAccess) ? 1 : 0.98 }}>
                         <Button
                             type="submit"
-                            disabled={isPending || !isPro}
+                            disabled={isPending || !hasSmtpAccess}
                             className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold h-10 text-sm transition-colors shadow-[0_0_15px_rgba(34,211,238,0.15)] hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] disabled:opacity-50"
                         >
                             {isPending ? (

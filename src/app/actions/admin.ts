@@ -3,10 +3,14 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { dispatchEmail } from '@/lib/email';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { verifyAndPromptRevenueUpgrade } from "@/lib/limits";
 
 // Update affiliate details — all editable fields
 export async function updateAffiliate(id: string, formData: FormData) {
     const supabase = await createClient();
+
+
 
     const name               = formData.get('name') as string;
     const email              = formData.get('email') as string;
@@ -397,6 +401,9 @@ export async function createManualCommission(formData: FormData) {
         .from('affiliates')
         .update({ total_commission: Number(affiliate.total_commission || 0) + amount })
         .eq('id', affiliate_id);
+
+    // Background execution: check revenue limits
+    verifyAndPromptRevenueUpgrade(affiliate.org_id).catch(err => console.error('[admin limits] error', err));
 
     revalidatePath('/admin/commissions');
     revalidatePath('/admin/referrals');

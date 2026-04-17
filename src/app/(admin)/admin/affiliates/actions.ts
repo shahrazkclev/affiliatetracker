@@ -38,6 +38,22 @@ export async function addAffiliateDirectly(formData: FormData): Promise<{ error?
 
     const firstOrgId = resolvedCampaigns[0].orgId;
 
+    // --- ENFORCE SAAS TIER AFFILIATE LIMITS ---
+    const { data: orgInfo } = await admin
+        .from('organizations')
+        .select('saas_plans(max_affiliates)')
+        .eq('id', firstOrgId)
+        .single();
+    
+    const maxAffiliates = (orgInfo?.saas_plans as any)?.max_affiliates;
+    if (maxAffiliates !== null && maxAffiliates !== undefined) {
+        const { count } = await admin.from('affiliates').select('*', { count: 'exact', head: true }).eq('org_id', firstOrgId);
+        if ((count || 0) >= maxAffiliates) {
+            return { error: `Affiliate limit reached. Your plan allows up to ${maxAffiliates} affiliates. Please upgrade.` };
+        }
+    }
+    // ------------------------------------------
+
     // Ensure base referral code isn't taken anywhere
     const { data: taken } = await admin
         .from('affiliates').select('id').eq('referral_code', referralCode).maybeSingle();

@@ -105,7 +105,7 @@ export default async function ReferralsPage({
     }
 
     return (
-        <div className="space-y-6 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 font-sans">
+        <div className="space-y-6 w-full max-w-full font-sans">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
