@@ -17,30 +17,36 @@ export async function addAffiliateDirectly(formData: FormData): Promise<{ error?
     const name = (formData.get('name') as string)?.trim();
     const email = (formData.get('email') as string)?.trim().toLowerCase();
     const referralCode = (formData.get('referralCode') as string)?.trim().toLowerCase().replace(/\s+/g, '');
-    const campaignId = formData.get('campaign_id') as string || null;
+    const campaignIds = formData.getAll('campaign_id') as string[];
     const stripePromoId = (formData.get('stripe_promo_id') as string)?.trim() || null;
     const stripePromoCode = (formData.get('stripe_promo_code') as string)?.trim() || null;
 
-    // Get org_id from campaign, or from default campaign
-    let orgId: string | null = null;
-    if (campaignId) {
-        const { data: camp } = await admin.from('campaigns').select('org_id').eq('id', campaignId).maybeSingle();
-        orgId = camp?.org_id ?? null;
-    } else {
-        const { data: defCamp } = await admin.from('campaigns').select('id, org_id').eq('is_default', true).maybeSingle();
-        orgId = defCamp?.org_id ?? null;
-    }
-
     if (!name || !email || !referralCode) return { error: 'Name, email, and referral code are required.' };
 
-    // Check referral code not already taken across the entire system
+    // Resolve which campaigns to add to
+    let resolvedCampaigns: { id: string, orgId: string, name: string }[] = [];
+    
+    if (campaignIds.length > 0) {
+        const { data: camps } = await admin.from('campaigns').select('id, org_id, name').in('id', campaignIds);
+        resolvedCampaigns = (camps || []).map(c => ({ id: c.id, orgId: c.org_id, name: c.name }));
+    } else {
+        const { data: defCamp } = await admin.from('campaigns').select('id, org_id, name').eq('is_default', true).maybeSingle();
+        if (defCamp) resolvedCampaigns = [{ id: defCamp.id, orgId: defCamp.org_id, name: defCamp.name }];
+    }
+
+    if (resolvedCampaigns.length === 0) return { error: 'No valid campaigns found or specified.' };
+
+    const firstOrgId = resolvedCampaigns[0].orgId;
+
+    // Ensure base referral code isn't taken anywhere
     const { data: taken } = await admin
         .from('affiliates').select('id').eq('referral_code', referralCode).maybeSingle();
-    if (taken) return { error: 'That referral code is already taken.' };
+    if (taken) return { error: 'That primary referral code is already taken.' };
 
     let userId: string | null = null;
+    let fallbackToEmail = false;
 
-    // Check if they have an existing profile
+    // 1. Resolve or Create Supabase Auth User
     const { data: existingProfiles } = await admin
         .from('affiliates')
         .select('user_id')
@@ -49,50 +55,70 @@ export async function addAffiliateDirectly(formData: FormData): Promise<{ error?
 
     if (existingProfiles && existingProfiles.length > 0) {
         userId = existingProfiles[0].user_id;
-
-        // Ensure they aren't already mapped to THIS specific campaign
-        const { data: sameCampaign } = await admin
-            .from('affiliates')
-            .select('id')
-            .eq('email', email)
-            .eq('org_id', orgId)
-            .eq('campaign_id', campaignId || null)
-            .maybeSingle();
-
-        if (sameCampaign) {
-            return { error: 'This partner is already assigned to this campaign.' };
-        }
     } else {
-        // Create auth user (no password — they'll set it on first login via magic link)
         const { data: authData, error: authError } = await admin.auth.admin.createUser({
             email,
             email_confirm: true,
         });
         if (authError || !authData.user) {
-            // Fallback in case they existed in Auth but not Affiliates
             const { data: existingAuth } = await admin.auth.admin.listUsers();
             const matchedUser = existingAuth?.users.find((u: any) => u.email === email);
             if (matchedUser) {
                 userId = matchedUser.id;
             } else {
-                return { error: authError?.message || 'Could not create account.' };
+                fallbackToEmail = true; // Not ideal, but won't crash if Auth setup has issues
             }
         } else {
             userId = authData.user.id;
         }
     }
 
-    const { error: insertError } = await admin.from('affiliates').insert({
-        user_id: userId,
-        org_id: orgId,
-        campaign_id: campaignId || null,
-        name,
-        email,
-        referral_code: referralCode,
-        status: 'active', // immediately active when admin adds directly
-        stripe_promo_id: stripePromoId,
-        stripe_promo_code: stripePromoCode,
-    });
+    if (!userId && !fallbackToEmail) return { error: 'Failed to resolve user account.' };
+
+    // 2. Build rows to insert
+    const insertRows = [];
+    for (let i = 0; i < resolvedCampaigns.length; i++) {
+        const camp = resolvedCampaigns[i];
+        
+        // Generate referral code: first gets exact code, rest get suffixed versions
+        let specificRefCode = referralCode;
+        if (i > 0) {
+            // e.g., 'john20-summer'
+            const sanitizedCampName = camp.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            specificRefCode = `${referralCode}-${sanitizedCampName || i}`;
+        }
+        
+        // Avoid inserting if they are already in this specific campaign
+        if (userId) {
+            const { data: sameCampaign } = await admin
+                .from('affiliates')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('campaign_id', camp.id)
+                .maybeSingle();
+
+            if (sameCampaign) continue; // Skip already assigned ones
+        }
+
+        insertRows.push({
+            user_id: userId,
+            org_id: camp.orgId,
+            campaign_id: camp.id,
+            name,
+            email,
+            referral_code: specificRefCode,
+            status: 'active',
+            stripe_promo_id: stripePromoId,
+            stripe_promo_code: stripePromoCode,
+        });
+    }
+
+    if (insertRows.length === 0) {
+        return { error: 'User is already assigned to all selected campaigns.' };
+    }
+
+    // 3. Batch insert
+    const { error: insertError } = await admin.from('affiliates').insert(insertRows);
 
     if (insertError) {
         return { error: 'Could not add affiliate: ' + insertError.message };

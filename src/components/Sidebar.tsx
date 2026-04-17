@@ -26,7 +26,7 @@ const navGroups = [
     items: [
       { icon: Megaphone, label: "Campaigns", href: "/admin/campaigns" },
       { icon: MonitorPlay, label: "Portal Design", href: "/admin/portal-config" },
-      { icon: CreditCard, label: "Stripe", href: "/admin/billing" },
+      { icon: CreditCard, label: "Billing", href: "/admin/billing" },
     ]
   },
   {

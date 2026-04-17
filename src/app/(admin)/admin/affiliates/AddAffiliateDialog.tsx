@@ -238,11 +238,15 @@ export function AddAffiliateDialog({ campaigns, portalUrl }: { campaigns: Campai
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="campaign" className="text-zinc-300 text-sm">Campaign</Label>
-                                <select id="campaign" name="campaign_id"
-                                    className="flex h-10 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer appearance-none">
-                                    {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
+                                <Label className="text-zinc-300 text-sm">Campaigns (Select multiple)</Label>
+                                <div className="max-h-32 overflow-y-auto bg-zinc-900 border border-zinc-700 rounded-md p-2 space-y-1">
+                                    {campaigns.map((c, i) => (
+                                        <label key={c.id} className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer hover:bg-zinc-800 p-1.5 rounded transition-colors">
+                                            <input type="checkbox" name="campaign_id" value={c.id} defaultChecked={i === 0} className="w-4 h-4 rounded border-zinc-700 bg-zinc-950 text-orange-500 focus:ring-orange-500 accent-orange-500" />
+                                            {c.name}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* ── Stripe Promo Code ──────────────────────────────── */}
