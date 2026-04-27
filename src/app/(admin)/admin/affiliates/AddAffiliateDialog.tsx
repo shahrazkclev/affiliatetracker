@@ -9,7 +9,7 @@ import {
     PlusCircle, UserPlus, Mail, AlertCircle, CheckCircle2, Loader2,
     Copy, Check, Ticket, Tag, RefreshCw, ChevronsUpDown,
 } from 'lucide-react';
-import { addAffiliateDirectly } from './actions';
+import { addAffiliateDirectly, sendAffiliateInvite } from './actions';
 import { listStripeCoupons, createStripePromoCode, createStripeCoupon } from '@/app/(admin)/admin/settings/stripe-actions';
 
 
@@ -151,6 +151,20 @@ export function AddAffiliateDialog({ campaigns, portalUrl }: { campaigns: Campai
             if (result?.error) { setError(result.error); return; }
             setSuccess(true);
             setTimeout(() => setOpen(false), 1500);
+        });
+    }
+
+    async function handleSendInvite(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        setError(null);
+        setSuccess(false);
+        const fd = new FormData(e.currentTarget);
+        fd.set('portalUrl', portalUrl);
+        startTransition(async () => {
+            const result = await sendAffiliateInvite(fd);
+            if (result?.error) { setError(result.error); return; }
+            setSuccess(true);
+            setTimeout(() => setOpen(false), 2000);
         });
     }
 
@@ -399,23 +413,32 @@ export function AddAffiliateDialog({ campaigns, portalUrl }: { campaigns: Campai
 
                     {/* Tab: Send Invite */}
                     {tab === 'invite' && (
-                        <div className="space-y-4">
+                        <form onSubmit={handleSendInvite} className="space-y-4">
                             <p className="text-xs text-zinc-500 -mt-1">
-                                Share the sign-up link with anyone you'd like to invite. They'll apply and you can approve them.
+                                Send an email invitation directly to your partner's inbox.
                             </p>
                             <div className="flex items-center gap-2">
-                                <Input value={portalUrl} readOnly className="bg-zinc-900 border-zinc-700 text-zinc-300 font-mono text-sm focus-visible:ring-orange-500/50" />
-                                <Button type="button" onClick={handleCopy} className="shrink-0 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-200 px-3 h-10">
-                                    {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                                <Input name="email" type="email" placeholder="partner@email.com" required disabled={isPending} className="bg-zinc-900 border-zinc-700 text-zinc-300 font-mono text-sm focus-visible:ring-orange-500/50" />
+                                <Button type="submit" disabled={isPending} className="shrink-0 bg-orange-600 border border-orange-500 hover:bg-orange-500 text-white font-bold px-4 h-10 transition-all shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+                                    {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Invite'}
                                 </Button>
                             </div>
-                            <p className="text-[11px] text-zinc-600 font-mono">
-                                Anyone who signs up via this link will appear in your Affiliates list as pending, awaiting approval.
-                            </p>
+                            <div className="pt-2 border-t border-zinc-800">
+                                <p className="text-[11px] text-zinc-600 font-mono mb-2">
+                                    Or manually share your sign-up link:
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <Input value={portalUrl} readOnly className="bg-zinc-900/50 border-zinc-800 text-zinc-500 font-mono text-xs focus-visible:ring-0" />
+                                    <Button type="button" onClick={handleCopy} variant="outline" className="shrink-0 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-300 px-3 h-8 text-xs">
+                                        {copied ? <Check className="w-3 h-3 text-green-400 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                                        {copied ? 'Copied' : 'Copy'}
+                                    </Button>
+                                </div>
+                            </div>
                             <DialogClose asChild>
-                                <Button className="w-full bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700">Done</Button>
+                                <Button className="w-full bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 mt-2">Done</Button>
                             </DialogClose>
-                        </div>
+                        </form>
                     )}
                 </div>
             </DialogContent>

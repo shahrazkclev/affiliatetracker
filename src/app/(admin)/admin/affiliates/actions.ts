@@ -145,18 +145,37 @@ export async function addAffiliateDirectly(formData: FormData): Promise<{ error?
 
 }
 
+import { dispatchEmail } from '@/lib/email';
+import { AFFILIATE_INVITATION_TEMPLATE } from '@/lib/email-templates';
+
 /** Send an invite email with the sign-up link */
 export async function sendAffiliateInvite(formData: FormData): Promise<{ error?: string }> {
     const admin = getAdminClient();
     const email = (formData.get('email') as string)?.trim().toLowerCase();
+    const portalUrl = (formData.get('portalUrl') as string)?.trim();
+    
     if (!email) return { error: 'Email is required.' };
+    if (!portalUrl) return { error: 'Portal URL is missing.' };
+
+    const { data: { user } } = await admin.auth.getUser();
+    const { data: org } = await admin.from('organizations').select('id').eq('owner_id', user?.id || '').single();
+    if (!org) return { error: 'Organization not found' };
 
     // Check not already registered
     const { data: existing } = await admin.from('affiliates').select('id').eq('email', email).maybeSingle();
     if (existing) return { error: 'An affiliate with this email already exists.' };
 
-    // For now, just send registration link — they sign up themselves via the portal
-    // In future: could send a personalised invite email via Supabase / make.com
-    // Simply return success — the caller shows the registration link to copy/share
+    try {
+        await dispatchEmail(org.id, {
+            to: email,
+            subject: 'Partner Program Invitation',
+            html: AFFILIATE_INVITATION_TEMPLATE(`${portalUrl}/register`),
+            _rawHtmlOverride: true
+        } as any);
+    } catch (e) {
+        console.error("Failed to send invite email:", e);
+        return { error: 'Failed to dispatch email' };
+    }
+
     return {};
 }

@@ -8,8 +8,9 @@ import { AuthHashHandler } from "@/components/AuthHashHandler";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Partner Program",
-  description: "AffiliateMango",
+  metadataBase: new URL('https://affiliatemango.com'),
+  title: "AffiliateMango | Automated Affiliate Network Engine",
+  description: "Create powerful affiliate programs in minutes. We handle Stripe webhooks, partner payouts, and seamless tracking so you don't have to.",
 };
 
 export default function RootLayout({

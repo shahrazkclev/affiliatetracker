@@ -227,7 +227,7 @@ export default function LoginPage() {
                                 </div>
                             )}
                             <div className="flex items-center justify-between pt-1">
-                                <button type="button" onClick={() => { setStep('email'); setError(null); setOtpDigits(['','','','','','','','']); }}
+                                <button type="button" onClick={() => { setStep('email'); setError(null); setOtpDigits(['', '', '', '', '', '']); }}
                                     className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
                                     ← Wrong email
                                 </button>

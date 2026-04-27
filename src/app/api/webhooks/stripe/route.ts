@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     // Get org's webhook secret
     const { data: org } = await supabase
         .from('organizations')
-        .select('id, stripe_webhook_secret, stripe_secret_key')
+        .select('id, stripe_webhook_secret, stripe_secret_key, owner_id')
         .limit(1)
         .single();
         
@@ -127,8 +127,8 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
     let matchedAffiliate: any = null;
 
     if (!rawRefCode) {
-        const discounts = session.total_details?.breakdown?.discounts || [];
-        if (discounts.length === 0) {
+        const hasDiscounts = (session.total_details?.amount_discount > 0) || (session.total_details?.breakdown?.discounts?.length > 0) || (session.discounts?.length > 0);
+        if (!hasDiscounts) {
             console.log('[webhook] checkout.session.completed — no client_reference_id and no discounts, skipping commission');
             return;
         }
@@ -141,14 +141,18 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
                 const Stripe = require('stripe').default || require('stripe');
                 const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' });
                 const expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
-                    expand: ['total_details.breakdown.discounts.discount.promotion_code']
+                    expand: ['total_details.breakdown.discounts.discount.promotion_code', 'discounts', 'discounts.promotion_code']
                 });
 
-                const expandedDiscounts = expandedSession.total_details?.breakdown?.discounts || [];
+                const expandedDiscounts = expandedSession.total_details?.breakdown?.discounts?.length 
+                    ? expandedSession.total_details.breakdown.discounts 
+                    : (expandedSession.discounts || []);
+                
                 for (const d of expandedDiscounts) {
-                    const couponId = d.discount?.coupon?.id;
-                    const promoObj = d.discount?.promotion_code as any;
-                    const promoCodeText = promoObj?.code;
+                    const discountObj = d.discount || d; // Handle both discount breakdown objects and direct discount objects
+                    const couponId = discountObj?.coupon?.id || (typeof discountObj?.coupon === 'string' ? discountObj.coupon : null);
+                    const promoObj = discountObj?.promotion_code as any;
+                    const promoCodeText = typeof promoObj === 'string' ? null : promoObj?.code;
 
                     if (promoCodeText || couponId) {
                         let q = supabase
@@ -158,7 +162,7 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
                         
                         // Prioritize matching the exact text typed by the customer, then the internal ID.
                         if (promoCodeText) {
-                            q = q.eq('stripe_promo_code', promoCodeText);
+                            q = q.ilike('stripe_promo_code', promoCodeText);
                         } else {
                             q = q.eq('stripe_promo_id', couponId);
                         }
@@ -176,12 +180,16 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
         }
 
         // Fallback: If SDK fails or no key, match via raw coupon.id
-        if (!matchedAffiliate && discounts[0]?.discount?.coupon?.id) {
+        const fallbackDiscounts = session.total_details?.breakdown?.discounts || session.discounts || [];
+        const firstDiscountObj = fallbackDiscounts[0]?.discount || fallbackDiscounts[0];
+        const firstCouponId = firstDiscountObj?.coupon?.id || (typeof firstDiscountObj?.coupon === 'string' ? firstDiscountObj.coupon : null);
+        
+        if (!matchedAffiliate && firstCouponId) {
             const { data: aff } = await supabase
                 .from('affiliates')
                 .select('id, campaign_id, total_commission')
                 .eq('org_id', org.id)
-                .eq('stripe_promo_id', discounts[0].discount.coupon.id)
+                .eq('stripe_promo_id', firstCouponId)
                 .maybeSingle();
             if (aff) matchedAffiliate = aff;
         }
@@ -297,6 +305,58 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
 
     console.log(`[webhook] ✓ Commission $${commissionAmount} created for affiliate ${affiliate.id} (ref: ${refCode})`);
     
+    try {
+        const { data: affiliateData } = await supabase.from('affiliates').select('first_name, email, org_id').eq('id', affiliate.id).single();
+        let adminEmail = undefined;
+        if (org.owner_id) {
+            const { data: adminUser } = await supabase.auth.admin.getUserById(org.owner_id);
+            if (adminUser?.user?.email) adminEmail = adminUser.user.email;
+        }
+
+        const { dispatchEmail } = await import('@/lib/email');
+        const { NEW_COMMISSION_TEMPLATE } = await import('@/lib/email-templates');
+
+        // To Affiliate
+        if (affiliateData?.email) {
+            await dispatchEmail(org.id, {
+                to: affiliateData.email,
+                subject: 'New Commission Earned! 💰',
+                html: NEW_COMMISSION_TEMPLATE(affiliateData.first_name || 'Partner', commissionAmount.toFixed(2), customerEmail),
+                _rawHtmlOverride: true
+            } as any);
+        }
+
+        // To Admin
+        if (adminEmail) {
+            const adminHtml = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; background: #f9fafb; padding: 20px;">
+  <div style="background: white; border-radius: 8px; padding: 20px; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb;">
+      <h2 style="color: #111827; margin-top: 0;">New Affiliate Sale! 🎉</h2>
+      <p style="color: #4b5563;">A new sale was just tracked through your affiliate program.</p>
+      <div style="background: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Revenue:</strong> $${amount.toFixed(2)}</p>
+          <p style="margin: 5px 0;"><strong>Commission:</strong> $${commissionAmount.toFixed(2)}</p>
+          <p style="margin: 5px 0;"><strong>Code/Tag:</strong> ${trackingTag || refCode}</p>
+          <p style="margin: 5px 0;"><strong>Customer:</strong> ${customerEmail || 'Unknown'}</p>
+          <p style="margin: 5px 0;"><strong>Affiliate:</strong> ${affiliateData?.first_name || 'Partner'} (${affiliateData?.email || 'Unknown'})</p>
+      </div>
+      <p style="color: #6b7280; font-size: 13px;">View the details in your SuperAdmin dashboard.</p>
+  </div>
+</body>
+</html>`;
+            await dispatchEmail(org.id, {
+                to: adminEmail,
+                subject: 'New Affiliate Sale Tracked',
+                html: adminHtml,
+                _rawHtmlOverride: true
+            } as any);
+        }
+    } catch (e) {
+        console.error('[webhook] Failed to dispatch referral emails:', e);
+    }
+
     // Background execution: check revenue limits and notify organization admin
     verifyAndPromptRevenueUpgrade(org.id).catch(err => console.error('[webhook limits] error', err));
 }

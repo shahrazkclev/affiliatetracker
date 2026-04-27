@@ -180,11 +180,9 @@ export default async function AdminDashboard() {
                 <p className="text-[13px] text-zinc-400 mt-1 font-medium leading-relaxed">Drop this link in your site's footer to capture inbound partners.</p>
               </CardHeader>
               <CardContent className="pt-2 pb-6 px-6 flex gap-2">
-                  <div className="flex-1 w-full bg-transparent hover:bg-zinc-800 rounded-lg transition-all border border-zinc-800 hover:border-zinc-700 relative overflow-hidden text-sm">
-                    <CopyButton text={portalUrl} className="w-full h-full min-h-[40px] absolute inset-0 text-zinc-300 font-bold shadow-none opacity-0" />
-                    <div className="w-full h-full min-h-[40px] flex items-center justify-center font-bold pointer-events-none text-zinc-400 group-hover:text-zinc-300 transition-colors">
-                      Copy Link
-                    </div>
+                  <div className="flex-1 w-full group relative">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg blur opacity-0 group-hover:opacity-30 transition duration-500"></div>
+                    <CopyButton text={portalUrl} className="relative w-full h-full min-h-[40px] flex items-center justify-center bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold rounded-lg transition-all text-sm group-hover:border-zinc-700 shadow-sm hover:shadow-[0_0_15px_rgba(249,115,22,0.15)] active:scale-[0.98]" />
                   </div>
               </CardContent>
             </Card>

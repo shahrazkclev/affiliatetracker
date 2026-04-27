@@ -255,3 +255,23 @@ export const AUTH_LINK_TEMPLATE = (
   appUrl,
   logoHeight
 );
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AFFILIATE INVITATION
+// ─────────────────────────────────────────────────────────────────────────────
+export const AFFILIATE_INVITATION_TEMPLATE = (
+  inviteUrl: string,
+  appUrl: string = 'https://affiliatemango.com',
+  logoUrl?: string,
+  logoHeight: number = 44
+) => emailShell(
+  'You have been invited to join our Partner Program',
+  logoUrl,
+  `${badge('Invitation', '#eff6ff', '#bfdbfe', '#2563eb')}
+  <h1 style="margin:0 0 16px;font-size:26px;color:#111827;font-weight:800;letter-spacing:-0.02em;line-height:1.2;">Partner Program Invitation 🎉</h1>
+  <p style="margin:0 0 24px;font-size:16px;color:#4b5563;line-height:1.6;">You've been invited to join our exclusive affiliate partner program! Click the button below to sign up, get your unique tracking link, and start earning commissions today.</p>
+  ${ctaButton('Accept Invitation', inviteUrl)}
+  `,
+  appUrl,
+  logoHeight
+);
