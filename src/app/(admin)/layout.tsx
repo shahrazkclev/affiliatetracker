@@ -28,7 +28,7 @@ export default async function AdminLayout({
         // We select the new billing columns safely. If they don't exist yet, we catch the error gracefully
         const { data: org, error } = await supabase
             .from('organizations')
-            .select('name, custom_domain, plan_status, trial_ends_at')
+            .select('name, custom_domain, plan_status, trial_ends_at, is_free_forever')
             .eq('owner_id', user.id)
             .maybeSingle();
 
@@ -38,7 +38,7 @@ export default async function AdminLayout({
             const isBillingActive = org.plan_status === 'active';
             const trialEndsAt = org.trial_ends_at ? new Date(org.trial_ends_at) : new Date();
             
-            if (!isBillingActive && trialEndsAt.getTime() < Date.now()) {
+            if (!org.is_free_forever && !isBillingActive && trialEndsAt.getTime() < Date.now()) {
                 isExpired = true;
             }
         }
