@@ -90,7 +90,7 @@ export default async function PortalHome() {
             </div>
 
             {/* Link Generator */}
-            <PortalBaseLink baseUrl={baseUrl} />
+            <PortalBaseLink baseUrl={baseUrl} promoCode={affiliate?.stripe_promo_code} />
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

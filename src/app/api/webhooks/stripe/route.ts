@@ -152,7 +152,16 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
                     const discountObj = d.discount || d; // Handle both discount breakdown objects and direct discount objects
                     const couponId = discountObj?.coupon?.id || (typeof discountObj?.coupon === 'string' ? discountObj.coupon : null);
                     const promoObj = discountObj?.promotion_code as any;
-                    const promoCodeText = typeof promoObj === 'string' ? null : promoObj?.code;
+                    let promoCodeText = typeof promoObj === 'string' ? null : promoObj?.code;
+
+                    if (typeof promoObj === 'string' && promoObj.startsWith('prc_')) {
+                        try {
+                            const fetchedPromo = await stripe.promotionCodes.retrieve(promoObj);
+                            promoCodeText = fetchedPromo.code;
+                        } catch (e) {
+                            console.error('[webhook] Error fetching promotion code:', e);
+                        }
+                    }
 
                     if (promoCodeText || couponId) {
                         let q = supabase
@@ -160,11 +169,11 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
                             .select('id, campaign_id, total_commission')
                             .eq('org_id', org.id);
                         
-                        // Prioritize matching the exact text typed by the customer, then the internal ID.
+                        // Check both the human-readable code and the stripe ID against whatever we found
                         if (promoCodeText) {
-                            q = q.ilike('stripe_promo_code', promoCodeText);
-                        } else {
-                            q = q.eq('stripe_promo_id', couponId);
+                            q = q.or(`stripe_promo_code.ilike.${promoCodeText},stripe_promo_id.eq.${promoCodeText}`);
+                        } else if (couponId) {
+                            q = q.or(`stripe_promo_code.ilike.${couponId},stripe_promo_id.eq.${couponId}`);
                         }
 
                         const { data: aff } = await q.maybeSingle();
@@ -189,7 +198,7 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
                 .from('affiliates')
                 .select('id, campaign_id, total_commission')
                 .eq('org_id', org.id)
-                .eq('stripe_promo_id', firstCouponId)
+                .or(`stripe_promo_code.ilike.${firstCouponId},stripe_promo_id.eq.${firstCouponId}`)
                 .maybeSingle();
             if (aff) matchedAffiliate = aff;
         }
