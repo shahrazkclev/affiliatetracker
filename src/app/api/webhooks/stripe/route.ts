@@ -154,7 +154,7 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
                     const promoObj = discountObj?.promotion_code as any;
                     let promoCodeText = typeof promoObj === 'string' ? null : promoObj?.code;
 
-                    if (typeof promoObj === 'string' && promoObj.startsWith('prc_')) {
+                    if (typeof promoObj === 'string' && (promoObj.startsWith('prc_') || promoObj.startsWith('promo_'))) {
                         try {
                             const fetchedPromo = await stripe.promotionCodes.retrieve(promoObj);
                             promoCodeText = fetchedPromo.code;
