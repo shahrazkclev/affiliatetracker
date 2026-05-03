@@ -136,71 +136,71 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
         console.log('[webhook] No client_reference_id but found discounts. Attempting promo code resolution...');
         const stripeKey = org.stripe_secret_key || process.env.STRIPE_SECRET_KEY;
 
-        if (stripeKey) {
+        // Step 1: Collect all promotion_code IDs and coupon IDs from the raw session
+        const rawDiscounts = session.discounts || [];
+        console.log('[webhook] Raw discounts from session:', JSON.stringify(rawDiscounts));
+
+        if (stripeKey && rawDiscounts.length > 0) {
             try {
                 const Stripe = require('stripe').default || require('stripe');
                 const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' });
-                const expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
-                    expand: ['total_details.breakdown.discounts.discount.promotion_code', 'discounts', 'discounts.promotion_code']
-                });
 
-                const expandedDiscounts = expandedSession.total_details?.breakdown?.discounts?.length 
-                    ? expandedSession.total_details.breakdown.discounts 
-                    : (expandedSession.discounts || []);
-                
-                for (const d of expandedDiscounts) {
-                    const discountObj = d.discount || d; // Handle both discount breakdown objects and direct discount objects
-                    const couponId = discountObj?.coupon?.id || (typeof discountObj?.coupon === 'string' ? discountObj.coupon : null);
-                    const promoObj = discountObj?.promotion_code as any;
-                    let promoCodeText = typeof promoObj === 'string' ? null : promoObj?.code;
+                for (const disc of rawDiscounts) {
+                    // disc.promotion_code is a string ID like "promo_1TSz..."
+                    // disc.coupon is a string ID or null
+                    const promoId = disc.promotion_code;
+                    const couponId = disc.coupon;
 
-                    if (typeof promoObj === 'string' && (promoObj.startsWith('prc_') || promoObj.startsWith('promo_'))) {
+                    console.log('[webhook] Processing discount — promo_id:', promoId, 'coupon_id:', couponId);
+
+                    // If we have a promotion_code ID, fetch the actual code text from Stripe
+                    if (promoId && typeof promoId === 'string') {
                         try {
-                            const fetchedPromo = await stripe.promotionCodes.retrieve(promoObj);
-                            promoCodeText = fetchedPromo.code;
-                        } catch (e) {
-                            console.error('[webhook] Error fetching promotion code:', e);
+                            const promoObj = await stripe.promotionCodes.retrieve(promoId);
+                            const promoCodeText = promoObj.code; // e.g. "SHAHRAZ100XT"
+                            const promoCouponId = promoObj.coupon?.id;
+
+                            console.log('[webhook] Resolved promo code text:', promoCodeText, 'coupon:', promoCouponId);
+
+                            if (promoCodeText) {
+                                // Search DB: match the human-readable code OR the promo ID OR the coupon ID
+                                const { data: aff, error: affErr } = await supabase
+                                    .from('affiliates')
+                                    .select('id, campaign_id, total_commission')
+                                    .eq('org_id', org.id)
+                                    .or(`stripe_promo_code.ilike.${promoCodeText},stripe_promo_id.eq.${promoId}${promoCouponId ? `,stripe_promo_id.eq.${promoCouponId}` : ''}`)
+                                    .maybeSingle();
+                                
+                                if (affErr) console.error('[webhook] Affiliate lookup error:', affErr);
+                                if (aff) {
+                                    console.log('[webhook] ✓ Matched affiliate via promo code:', aff.id);
+                                    matchedAffiliate = aff;
+                                    break;
+                                }
+                            }
+                        } catch (e: any) {
+                            console.error('[webhook] Error fetching promotion code', promoId, ':', e.message);
                         }
                     }
 
-                    if (promoCodeText || couponId) {
-                        let q = supabase
+                    // Fallback: try matching by coupon ID directly
+                    if (!matchedAffiliate && couponId && typeof couponId === 'string') {
+                        const { data: aff } = await supabase
                             .from('affiliates')
                             .select('id, campaign_id, total_commission')
-                            .eq('org_id', org.id);
-                        
-                        // Check both the human-readable code and the stripe ID against whatever we found
-                        if (promoCodeText) {
-                            q = q.or(`stripe_promo_code.ilike.${promoCodeText},stripe_promo_id.eq.${promoCodeText}`);
-                        } else if (couponId) {
-                            q = q.or(`stripe_promo_code.ilike.${couponId},stripe_promo_id.eq.${couponId}`);
-                        }
-
-                        const { data: aff } = await q.maybeSingle();
+                            .eq('org_id', org.id)
+                            .or(`stripe_promo_code.ilike.${couponId},stripe_promo_id.eq.${couponId}`)
+                            .maybeSingle();
                         if (aff) {
+                            console.log('[webhook] ✓ Matched affiliate via coupon ID:', aff.id);
                             matchedAffiliate = aff;
-                            break; // Stop looking once we map a commission
+                            break;
                         }
                     }
                 }
-            } catch (e) {
-                console.error('[webhook] Error fetching expanded session for promo code:', e);
+            } catch (e: any) {
+                console.error('[webhook] Error in promo code resolution:', e.message);
             }
-        }
-
-        // Fallback: If SDK fails or no key, match via raw coupon.id
-        const fallbackDiscounts = session.total_details?.breakdown?.discounts || session.discounts || [];
-        const firstDiscountObj = fallbackDiscounts[0]?.discount || fallbackDiscounts[0];
-        const firstCouponId = firstDiscountObj?.coupon?.id || (typeof firstDiscountObj?.coupon === 'string' ? firstDiscountObj.coupon : null);
-        
-        if (!matchedAffiliate && firstCouponId) {
-            const { data: aff } = await supabase
-                .from('affiliates')
-                .select('id, campaign_id, total_commission')
-                .eq('org_id', org.id)
-                .or(`stripe_promo_code.ilike.${firstCouponId},stripe_promo_id.eq.${firstCouponId}`)
-                .maybeSingle();
-            if (aff) matchedAffiliate = aff;
         }
 
         if (!matchedAffiliate) {
