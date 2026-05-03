@@ -299,7 +299,7 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
  */
 
 /**
- * Sends a 6-digit OTP code via org SMTP (or global SMTP fallback).
+ * Sends an 8-digit OTP code via org SMTP (or global SMTP fallback).
  * Uses Supabase generateLink to get the email_otp code without sending any email itself.
  */
 export async function sendOtpEmail(formData: FormData): Promise<{ error?: string; sent?: boolean }> {
@@ -396,7 +396,7 @@ export async function sendOtpEmail(formData: FormData): Promise<{ error?: string
 }
 
 /**
- * Verifies the 6-digit OTP code and creates a session.
+ * Verifies the 8-digit OTP code and creates a session.
  */
 export async function verifyOtpCode(formData: FormData): Promise<{ error?: string }> {
     const email = (formData.get('email') as string)?.trim().toLowerCase();
