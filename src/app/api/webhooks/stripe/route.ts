@@ -315,7 +315,7 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
     console.log(`[webhook] ✓ Commission $${commissionAmount} created for affiliate ${affiliate.id} (ref: ${refCode})`);
     
     try {
-        const { data: affiliateData } = await supabase.from('affiliates').select('first_name, email, org_id').eq('id', affiliate.id).single();
+        const { data: affiliateData } = await supabase.from('affiliates').select('name, email, org_id').eq('id', affiliate.id).single();
         let adminEmail = undefined;
         if (org.owner_id) {
             const { data: adminUser } = await supabase.auth.admin.getUserById(org.owner_id);
@@ -325,12 +325,14 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
         const { dispatchEmail } = await import('@/lib/email');
         const { NEW_COMMISSION_TEMPLATE } = await import('@/lib/email-templates');
 
+        const affiliateFirstName = affiliateData?.name?.split(' ')[0] || 'Partner';
+
         // To Affiliate
         if (affiliateData?.email) {
             await dispatchEmail(org.id, {
                 to: affiliateData.email,
                 subject: 'New Commission Earned! 💰',
-                html: NEW_COMMISSION_TEMPLATE(affiliateData.first_name || 'Partner', commissionAmount.toFixed(2), customerEmail),
+                html: NEW_COMMISSION_TEMPLATE(affiliateFirstName, commissionAmount.toFixed(2), customerEmail),
                 _rawHtmlOverride: true
             } as any);
         }
@@ -349,7 +351,7 @@ async function handleCheckoutSession(supabase: any, org: any, session: any) {
           <p style="margin: 5px 0;"><strong>Commission:</strong> $${commissionAmount.toFixed(2)}</p>
           <p style="margin: 5px 0;"><strong>Code/Tag:</strong> ${trackingTag || refCode}</p>
           <p style="margin: 5px 0;"><strong>Customer:</strong> ${customerEmail || 'Unknown'}</p>
-          <p style="margin: 5px 0;"><strong>Affiliate:</strong> ${affiliateData?.first_name || 'Partner'} (${affiliateData?.email || 'Unknown'})</p>
+          <p style="margin: 5px 0;"><strong>Affiliate:</strong> ${affiliateFirstName} (${affiliateData?.email || 'Unknown'})</p>
       </div>
       <p style="color: #6b7280; font-size: 13px;">View the details in your SuperAdmin dashboard.</p>
   </div>

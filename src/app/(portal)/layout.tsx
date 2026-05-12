@@ -12,13 +12,15 @@ async function getOrgBranding() {
         const orgId = await getResolvedOrgId();
         if (!orgId) return null;
 
-        const supabase = await createClient();
+        const admin = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
         
-        const { data } = await supabase
+        const { data } = await admin
             .from("organizations")
             .select("primary_color, theme")
             .eq("id", orgId)
-            .limit(1)
             .single();
         return data;
     } catch {

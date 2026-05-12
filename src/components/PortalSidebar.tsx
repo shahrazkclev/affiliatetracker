@@ -1,16 +1,23 @@
 // Server component — fetches org logo & size from DB, renders sidebar shell.
 // Nav links (usePathname) live in PortalSidebarNav (client component).
 import Image from "next/image";
-import { createClient } from "@/utils/supabase/server";
+import { getResolvedOrgId } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { PortalSidebarNav } from "./PortalSidebarNav";
 
 async function getOrgBranding() {
     try {
-        const supabase = await createClient();
-        const { data } = await supabase
+        const orgId = await getResolvedOrgId();
+        if (!orgId) return null;
+
+        const admin = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+        const { data } = await admin
             .from("organizations")
-            .select("logo_url, logo_sidebar_height")
-            .limit(1)
+            .select("logo_url, logo_sidebar_height, primary_color, theme")
+            .eq("id", orgId)
             .single();
         return data;
     } catch {
