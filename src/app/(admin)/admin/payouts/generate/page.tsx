@@ -40,27 +40,32 @@ export default async function GeneratePayoutsPage({
     // Fetch payouts to calculate settled status dynamically
     const { data: payouts } = await admin.from('payouts').select('affiliate_id, created_at').eq('org_id', orgId);
 
-    const payoutMap: Record<string, Date[]> = {};
-    for (const p of payouts || []) {
-        if (!payoutMap[p.affiliate_id]) payoutMap[p.affiliate_id] = [];
-        payoutMap[p.affiliate_id].push(new Date(p.created_at));
-    }
+    // Also fetch payout amounts to compute what's actually been paid
+    const { data: payoutAmounts } = await admin.from('payouts').select('affiliate_id, amount').eq('org_id', orgId);
 
-    // Calculate dynamic amount owed per affiliate precisely against targetDate
-    const pendingSumMap: Record<string, number> = {};
-    let totalPaid = 0;
-
+    // Calculate total commissions per affiliate
+    const commissionSumMap: Record<string, number> = {};
     for (const c of commissions || []) {
         const commDate = new Date(c.created_at);
         if (!isAllTime && commDate > targetDate) continue;
+        commissionSumMap[c.affiliate_id] = (commissionSumMap[c.affiliate_id] || 0) + Number(c.commission_amount);
+    }
 
-        const dates = payoutMap[c.affiliate_id] || [];
-        const settled = dates.some(pd => pd >= commDate);
-        if (!settled) {
-            pendingSumMap[c.affiliate_id] = (pendingSumMap[c.affiliate_id] || 0) + Number(c.commission_amount);
-        } else {
-            totalPaid += Number(c.commission_amount);
-        }
+    // Calculate total payouts per affiliate
+    const paidSumMap: Record<string, number> = {};
+    for (const p of payoutAmounts || []) {
+        paidSumMap[p.affiliate_id] = (paidSumMap[p.affiliate_id] || 0) + Number(p.amount);
+    }
+
+    // Amount owed = total commissions - total paid
+    const pendingSumMap: Record<string, number> = {};
+    let totalPaid = 0;
+    for (const affId of Object.keys(commissionSumMap)) {
+        const earned = commissionSumMap[affId] || 0;
+        const paid = paidSumMap[affId] || 0;
+        const owed = Math.max(0, earned - paid);
+        if (owed > 0) pendingSumMap[affId] = owed;
+        totalPaid += paid;
     }
 
     const totalReadyToPay = Object.values(pendingSumMap).reduce((a, b) => a + (b || 0), 0);
