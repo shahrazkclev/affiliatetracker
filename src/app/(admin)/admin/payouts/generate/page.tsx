@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Zap, BellRing, Wallet } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { PayoutDatePicker } from "@/components/PayoutDatePicker";
 import { PayoutBatchSelector } from "./PayoutBatchSelector";
 import { PayoutRequestsPanel } from "./PayoutRequestsPanel";
@@ -13,8 +14,12 @@ export default async function GeneratePayoutsPage({
     searchParams: Promise<{ date?: string; minAmount?: string }>
 }) {
     const supabase = await createClient();
+    const admin = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: teamMembership } = await supabase.from('team_members').select('org_id').eq('user_id', user?.id || '').single();
+    const { data: teamMembership } = await admin.from('team_members').select('org_id').eq('user_id', user?.id || '').single();
     const org = teamMembership ? { id: teamMembership.org_id } : null;
     if (!org) return <div className="p-8 text-red-500">Organization not found.</div>;
     const orgId = org.id;
@@ -26,14 +31,14 @@ export default async function GeneratePayoutsPage({
     const minAmount = Number(params.minAmount) || 0;
 
     // Fetch affiliates
-    const { data: allAffiliates } = await supabase.from('affiliates').select('*').eq('org_id', orgId);
+    const { data: allAffiliates } = await admin.from('affiliates').select('*').eq('org_id', orgId);
 
-    // Fetch ALL commissions
-    const { data: commissions, error: comErr } = await supabase.from('commissions').select('affiliate_id, commission_amount, created_at').eq('org_id', orgId);
+    // Fetch ALL commissions (using admin client to bypass RLS and include all statuses)
+    const { data: commissions, error: comErr } = await admin.from('commissions').select('affiliate_id, commission_amount, created_at').eq('org_id', orgId);
     if (comErr) console.error("GeneratePayouts Commissions err:", comErr);
 
     // Fetch payouts to calculate settled status dynamically
-    const { data: payouts } = await supabase.from('payouts').select('affiliate_id, created_at').eq('org_id', orgId);
+    const { data: payouts } = await admin.from('payouts').select('affiliate_id, created_at').eq('org_id', orgId);
 
     const payoutMap: Record<string, Date[]> = {};
     for (const p of payouts || []) {
@@ -70,7 +75,7 @@ export default async function GeneratePayoutsPage({
         .sort((a, b) => b.amount_owed - a.amount_owed);
 
     // Fetch pending payout requests from affiliates
-    const { data: payoutRequests } = await supabase
+    const { data: payoutRequests } = await admin
         .from('payout_requests')
         .select('id, amount, created_at, status, affiliate_id, affiliate:affiliates(name, email, payout_threshold, total_commission)')
         .eq('status', 'pending')
