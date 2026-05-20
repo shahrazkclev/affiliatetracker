@@ -27,7 +27,7 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
 
     // Check if user already exists
     const { data: pwCheck } = await admin.rpc('check_user_has_password', { user_email: email });
-    const userExists = pwCheck && pwCheck.length > 0;
+    const userExists = pwCheck && pwCheck[0]?.user_exists === true;
     if (userExists) {
         return { error: 'An account with this email already exists.' };
     }
