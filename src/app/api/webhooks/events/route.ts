@@ -55,7 +55,11 @@ export async function POST(req: Request) {
         // Fetch affiliate details
         let affiliate = record || {};
         if (eventType === 'test_email') {
-            affiliate = { name: 'Test User', email: 'cgdora4@gmail.com', notify_test_email: true };
+            affiliate = {
+                name: 'Test User',
+                email: (record?.email as string) || 'cgdora4@gmail.com',
+                notify_test_email: true,
+            };
             if (!orgId) {
                 // For test emails, you might want to specify logic to fetch the first org or pass org_id in record.
             }

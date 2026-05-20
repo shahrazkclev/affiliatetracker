@@ -74,10 +74,11 @@ async function generateSignupVerificationLink(
 
 async function sendVerificationEmail(
     email: string,
-    actionLink: string
+    actionLink: string,
+    redirectTo: string
 ): Promise<{ error?: string }> {
     const html = buildVerificationHtml(actionLink);
-    console.log(`[Register] Dispatching verification email to ${email}`);
+    console.log(`[Register] Dispatching branded verification email to ${email}`);
     const result = await dispatchEmail(null, {
         to: email,
         subject: 'Verify your email address — AffiliateMango',
@@ -86,14 +87,41 @@ async function sendVerificationEmail(
     });
     console.log('[Register] Verification email dispatch result:', result);
 
-    if (!result.success) {
-        return {
-            error: result.error === 'SMTP Unconfigured'
-                ? 'Email could not be sent — mail server is not configured. Please contact support.'
-                : `Email could not be sent: ${result.error || 'unknown error'}`,
-        };
+    if (result.success) return {};
+
+    // Fallback: Supabase's own mailer (works on Netlify/Vercel when Hostinger SMTP rejects datacenter IPs)
+    console.warn('[Register] Custom SMTP failed, falling back to Supabase auth email:', result.error);
+
+    const supabase = await createClient();
+    const { error: resendErr } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: redirectTo },
+    });
+
+    if (!resendErr) {
+        console.log('[Register] Supabase auth resend succeeded for', email);
+        return {};
     }
-    return {};
+
+    console.warn('[Register] auth.resend failed, trying inviteUserByEmail:', resendErr.message);
+    const admin = getAdminClient();
+    const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
+        redirectTo,
+        data: { full_name: 'AffiliateMango User' },
+    });
+
+    if (!inviteErr) {
+        console.log('[Register] Supabase inviteUserByEmail succeeded for', email);
+        return {};
+    }
+
+    console.error('[Register] All email paths failed. SMTP:', result.error, 'Resend:', resendErr.message, 'Invite:', inviteErr.message);
+    return {
+        error:
+            'Email could not be sent. Check Netlify function logs for "[Email Dispatcher] Pass length" — ' +
+            'if it is not 15, production env vars differ from local. Otherwise redeploy with latest code.',
+    };
 }
 
 function buildVerificationHtml(actionLink: string): string {
@@ -175,20 +203,23 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
             return { error: resendErr?.message || 'Could not resend verification email. Please try again later.' };
         }
 
-        const emailErr = await sendVerificationEmail(email, resendLinkData.properties.action_link);
+        const emailErr = await sendVerificationEmail(
+            email,
+            resendLinkData.properties.action_link,
+            redirectTo
+        );
         if (emailErr.error) return emailErr;
 
         return { verifyEmail: true, email };
     }
 
     // Create user and generate verification link (does not automatically send email)
-    const { data: linkData, error: linkErr } = await generateSignupVerificationLink(
-        admin,
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+        type: 'signup',
         email,
         password,
-        redirectTo,
-        userMetadata
-    );
+        options: { redirectTo, data: userMetadata },
+    });
 
     if (linkErr) return { error: linkErr.message };
     if (!linkData?.properties?.action_link) {
@@ -279,7 +310,11 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
         }
     }
 
-    const emailErr = await sendVerificationEmail(email, linkData.properties.action_link);
+    const emailErr = await sendVerificationEmail(
+        email,
+        linkData.properties.action_link,
+        redirectTo
+    );
     if (emailErr.error) return emailErr;
 
     revalidatePath('/', 'layout');

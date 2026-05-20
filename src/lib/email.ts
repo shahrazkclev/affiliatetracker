@@ -1,10 +1,5 @@
 import nodemailer from 'nodemailer';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import dns from 'dns';
-import { promisify } from 'util';
-
-const lookupPromise = promisify(dns.lookup);
-
 
 interface EmailOptions {
     to: string;
@@ -13,12 +8,25 @@ interface EmailOptions {
     _rawHtmlOverride?: boolean;
 }
 
+/** Strip wrapping quotes — common when env vars are pasted with "..." in hosting dashboards */
+function cleanEnv(value: string | undefined): string | undefined {
+    if (!value) return value;
+    const trimmed = value.trim();
+    if (
+        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    ) {
+        return trimmed.slice(1, -1);
+    }
+    return trimmed;
+}
+
 export async function dispatchEmail(orgId: string | null, options: EmailOptions) {
-    let host = process.env.GLOBAL_SMTP_HOST;
-    let port = parseInt(process.env.GLOBAL_SMTP_PORT || '465', 10);
-    let user = process.env.GLOBAL_SMTP_USER;
-    let pass = process.env.GLOBAL_SMTP_PASS;
-    let fromEmail = process.env.GLOBAL_SMTP_FROM || 'noreply@affiliatemango.com';
+    let host = cleanEnv(process.env.GLOBAL_SMTP_HOST);
+    let port = parseInt(cleanEnv(process.env.GLOBAL_SMTP_PORT) || '465', 10);
+    let user = cleanEnv(process.env.GLOBAL_SMTP_USER);
+    let pass = cleanEnv(process.env.GLOBAL_SMTP_PASS);
+    let fromEmail = cleanEnv(process.env.GLOBAL_SMTP_FROM) || 'noreply@affiliatemango.com';
     let brandName = 'AffiliateMango';
     let brandColor = '#f97316'; // orange-500
 
@@ -39,11 +47,11 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
 
             // Override with tenant's specific SMTP if all required fields are present
             if (org.smtp_host && org.smtp_port && org.smtp_user && org.smtp_pass && org.smtp_from_email) {
-                host = org.smtp_host;
+                host = cleanEnv(org.smtp_host) ?? org.smtp_host;
                 port = org.smtp_port;
-                user = org.smtp_user;
-                pass = org.smtp_pass;
-                fromEmail = org.smtp_from_email;
+                user = cleanEnv(org.smtp_user) ?? org.smtp_user;
+                pass = cleanEnv(org.smtp_pass) ?? org.smtp_pass;
+                fromEmail = cleanEnv(org.smtp_from_email) ?? org.smtp_from_email;
             }
         }
     }
@@ -54,32 +62,35 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
         return { success: false, error: 'SMTP Unconfigured' };
     }
 
-    console.log(`[Email Dispatcher] Resolved config: Host: ${host}, Port: ${port}, User: ${user}, From: ${fromEmail}, Pass length: ${pass ? pass.length : 0}`);
+    console.log(
+        `[Email Dispatcher] Resolved config: Host: ${host}, Port: ${port}, User: ${user}, From: ${fromEmail}, Pass length: ${pass ? pass.length : 0}`
+    );
 
-    const originalHost = host;
-    if (host && !host.match(/^[0-9.]+$/)) {
-        try {
-            const res = await lookupPromise(host, { family: 4 });
-            host = res.address;
-        } catch (e: any) {
-            console.error(`[Email Dispatcher] Failed to resolve host ${originalHost} to IPv4:`, e.message);
-        }
+    const attempts: { port: number; secure: boolean; label: string }[] = [
+        { port, secure: port === 465, label: 'primary' },
+    ];
+    if (port === 465) {
+        attempts.push({ port: 587, secure: false, label: '587-fallback' });
     }
 
-    try {
-        const transporter = nodemailer.createTransport({
-            host,
-            port,
-            secure: port === 465, // true for 465, false for other ports
-            auth: { user, pass },
-            tls: {
-                servername: originalHost,
-                rejectUnauthorized: false
-            }
-        });
+    let lastError: Error | null = null;
 
-        // Scaffold standard styling directly into generic emails
-        const emailHTML = options._rawHtmlOverride ? options.html : `
+    for (const attempt of attempts) {
+        try {
+            const transporter = nodemailer.createTransport({
+                host,
+                port: attempt.port,
+                secure: attempt.secure,
+                auth: { user, pass },
+                connectionTimeout: 30_000,
+                greetingTimeout: 30_000,
+                socketTimeout: 30_000,
+                requireTLS: !attempt.secure,
+                tls: { rejectUnauthorized: false },
+            });
+
+            // Scaffold standard styling directly into generic emails
+            const emailHTML = options._rawHtmlOverride ? options.html : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px;">
             <div style="text-align: center; margin-bottom: 20px;">
                 <h1 style="color: ${brandColor}; margin: 0; font-size: 24px; font-weight: bold;">${brandName}</h1>
@@ -93,16 +104,25 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
         </div>
         `;
 
-        await transporter.sendMail({
-            from: `"${brandName} Partners" <${fromEmail}>`,
-            to: options.to,
-            subject: options.subject,
-            html: emailHTML,
-        });
+            await transporter.sendMail({
+                from: `"${brandName} Partners" <${fromEmail}>`,
+                to: options.to,
+                subject: options.subject,
+                html: emailHTML,
+            });
 
-        return { success: true };
-    } catch (error: any) {
-        console.error(`[Email Dispatcher] Failed to dispatch via ${host}:`, error.message);
-        return { success: false, error: error.message };
+            if (attempt.label !== 'primary') {
+                console.log(`[Email Dispatcher] Sent via ${attempt.label} on port ${attempt.port}`);
+            }
+            return { success: true };
+        } catch (error: any) {
+            lastError = error;
+            console.error(
+                `[Email Dispatcher] Failed (${attempt.label}, port ${attempt.port}) via ${host}:`,
+                error.message
+            );
+        }
     }
+
+    return { success: false, error: lastError?.message || 'SMTP send failed' };
 }
