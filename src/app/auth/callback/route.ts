@@ -46,7 +46,12 @@ export async function GET(request: Request) {
                 return NextResponse.redirect(resetUrl.toString());
             }
 
-            // First, check if this is a Platform Owner (Admin)
+            // Platform owner onboarding — org is provisioned at signup, but user still needs configure step
+            if (next.startsWith('/register/')) {
+                return NextResponse.redirect(`${origin}${next}`);
+            }
+
+            // Platform owner returning after verification
             const { data: org } = await admin
                 .from('organizations')
                 .select('id')
@@ -54,7 +59,6 @@ export async function GET(request: Request) {
                 .maybeSingle();
 
             if (org) {
-                // Return platform owners directly to their dashboard!
                 return NextResponse.redirect(`${origin}/admin`);
             }
 

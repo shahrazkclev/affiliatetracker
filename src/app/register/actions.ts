@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { dispatchEmail } from '@/lib/email';
+import { buildAuthCallbackUrl, getDashboardSiteUrl } from '@/lib/auth-urls';
 
 function getAdminClient() {
     return createAdminClient(
@@ -76,16 +77,14 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
         // User exists but is UNVERIFIED — regenerate link and resend email
         console.log(`[Register] User ${email} exists but is unverified. Resending verification email.`);
 
-        const siteHost = (await import('next/headers')).headers().then(h => h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "partners.affiliatemango.com");
-        const isLocal = (await siteHost).includes('localhost');
-        const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
+        const redirectTo = buildAuthCallbackUrl(getDashboardSiteUrl(), '/register/configure');
 
         const { data: resendLinkData, error: resendErr } = await admin.auth.admin.generateLink({
             type: 'signup',
             email,
             password,
             options: {
-                redirectTo: `${SITE_URL}/auth/callback?next=/register/configure`,
+                redirectTo,
                 data: { full_name: companyName }
             }
         });
@@ -109,9 +108,7 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
         return { verifyEmail: true, email };
     }
 
-    const siteHost = (await import('next/headers')).headers().then(h => h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "partners.affiliatemango.com");
-    const isLocal = (await siteHost).includes('localhost');
-    const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
+    const redirectTo = buildAuthCallbackUrl(getDashboardSiteUrl(), '/register/configure');
 
     // Create user and generate verification link (does not automatically send email)
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
@@ -119,7 +116,7 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
         email,
         password,
         options: {
-            redirectTo: `${SITE_URL}/auth/callback?next=/register/configure`,
+            redirectTo,
             data: {
                 full_name: companyName
             }

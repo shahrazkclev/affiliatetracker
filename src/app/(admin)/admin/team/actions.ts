@@ -61,15 +61,14 @@ export async function inviteTeamMember(formData: FormData): Promise<any> {
         return { error: 'Failed to add user to team.' };
     }
 
-    // Generate Magic Link
-    const siteHost = (await import('next/headers')).headers().then(h => h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "partners.affiliatemango.com");
-    const isLocal = (await siteHost).includes('localhost');
-    const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
+    // Generate Magic Link — team invites always land on the dashboard
+    const { buildAuthCallbackUrl, getDashboardSiteUrl } = await import('@/lib/auth-urls');
+    const redirectTo = buildAuthCallbackUrl(getDashboardSiteUrl(), '/admin');
 
     const { data: linkData } = await admin.auth.admin.generateLink({
         type: 'magiclink',
         email,
-        options: { redirectTo: `${SITE_URL}/auth/callback` }
+        options: { redirectTo }
     });
 
     if (linkData?.properties?.action_link) {

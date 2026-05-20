@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { buildAuthCallbackUrl, getPortalSiteUrl } from '@/lib/auth-urls';
 
 function getAdminClient() {
     return createAdminClient(
@@ -10,8 +11,6 @@ function getAdminClient() {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 }
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 /** Check if the user has clicked the confirmation link in their email */
 export async function checkEmailConfirmed(email: string): Promise<{ confirmed: boolean; error?: string }> {
@@ -40,9 +39,9 @@ export async function sendSignupConfirmation(formData: FormData): Promise<{ erro
     }
 
     const orgIdStr = (formData.get('org_id') as string)?.trim();
-    const emailRedirectTo = orgIdStr 
-        ? `${SITE_URL}/auth/callback?next=/apply/details?org_id=${orgIdStr}`
-        : `${SITE_URL}/auth/callback?next=/apply/details`;
+    const portalUrl = await getPortalSiteUrl();
+    const nextPath = orgIdStr ? `/apply/details?org_id=${orgIdStr}` : '/apply/details';
+    const emailRedirectTo = buildAuthCallbackUrl(portalUrl, nextPath);
 
     // Send confirmation link — on click it redirects to /auth/callback
     const { error } = await supabase.auth.signInWithOtp({

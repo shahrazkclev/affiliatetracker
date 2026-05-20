@@ -4,6 +4,13 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import {
+    buildAuthCallbackUrl,
+    getDashboardSiteUrl,
+    getPortalSiteUrl,
+    getRequestHostname,
+    isDashboardHostname,
+} from '@/lib/auth-urls';
 
 function getAdminClient() {
     return createAdminClient(
@@ -31,9 +38,7 @@ export async function checkLoginStatus(formData: FormData): Promise<{
     const email = (formData.get('email') as string)?.trim().toLowerCase();
     if (!email) return { error: 'Email is required.' };
 
-    const siteHost = (await import('next/headers')).headers().then(h => h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "partners.affiliatemango.com");
-    const isLocal = (await siteHost).includes('localhost');
-    const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
+    const portalUrl = await getPortalSiteUrl();
 
     // 1. Check if they have an auth user already via the existing RPC
     const { data: pwCheck } = await admin.rpc('check_user_has_password', { user_email: email });
@@ -78,7 +83,7 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         await admin.from('affiliates').update({ user_id: created.user.id }).eq('id', affiliate.id);
 
         const orgId = affiliate?.org_id || await (await import('@/utils/supabase/server')).getResolvedOrgId();
-        let appUrl = SITE_URL;
+        let appUrl = portalUrl;
         let logoUrl, logoHeight;
         let orgInfo: { logo_url?: string; logo_email_height?: number; custom_domain?: string } | null = null;
 
@@ -93,11 +98,12 @@ export async function checkLoginStatus(formData: FormData): Promise<{
         }
 
         // Send password setup email natively using generated link
-        const returnParam = orgInfo?.custom_domain ? `&return_to=${orgInfo.custom_domain}` : '';
+        const resetBase = orgInfo?.custom_domain ? `https://${orgInfo.custom_domain}` : portalUrl;
+        const redirectTo = buildAuthCallbackUrl(resetBase, '/reset-password');
         const { data: linkData } = await admin.auth.admin.generateLink({
             type: 'recovery',
             email,
-            options: { redirectTo: `https://partners.affiliatemango.com/auth/callback?next=/reset-password` }
+            options: { redirectTo }
         });
 
         if (linkData?.properties?.action_link) {
@@ -129,15 +135,12 @@ export async function sendMagicLink(formData: FormData): Promise<{ error?: strin
     const supabase = await createClient();
     const email = (formData.get('email') as string)?.trim().toLowerCase();
 
-    const siteHost = (await import('next/headers')).headers().then(h => h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "partners.affiliatemango.com");
-    const isLocal = (await siteHost).includes('localhost');
-    const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
-
+    const portalUrl = await getPortalSiteUrl();
     const admin = getAdminClient();
     
     // Find custom domain from DB
     const orgId = await (await import('@/utils/supabase/server')).getResolvedOrgId();
-    let appUrl = SITE_URL;
+    let appUrl = portalUrl;
     let logoUrl, logoHeight;
 
     if (orgId) {
@@ -149,10 +152,11 @@ export async function sendMagicLink(formData: FormData): Promise<{ error?: strin
         }
     }
 
+    const redirectTo = buildAuthCallbackUrl(appUrl, '/portal');
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'magiclink',
         email,
-        options: { redirectTo: `https://partners.affiliatemango.com/auth/callback` }
+        options: { redirectTo }
     });
 
     if (linkErr) return { error: linkErr.message };
@@ -241,15 +245,13 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     const email = (formData.get('email') as string)?.trim().toLowerCase();
     if (!email) return { error: 'Email is required.' };
 
-    const siteHost = (await import('next/headers')).headers().then(h => h.get("x-mango-tenant-host") || h.get("x-forwarded-host") || h.get("host") || "partners.affiliatemango.com");
-    const isLocal = (await siteHost).includes('localhost');
-    const SITE_URL = isLocal ? `http://${await siteHost}` : `https://${await siteHost}`;
-
+    const hostname = await getRequestHostname();
+    const portalUrl = await getPortalSiteUrl();
     const admin = getAdminClient();
     const { data: affiliate } = await admin.from('affiliates').select('org_id').eq('email', email).maybeSingle();
     const orgId = affiliate?.org_id || await (await import('@/utils/supabase/server')).getResolvedOrgId();
     
-    let appUrl = SITE_URL;
+    let appUrl = portalUrl;
     let logoUrl, logoHeight;
     let orgInfo: { logo_url?: string; logo_email_height?: number; custom_domain?: string } | null = null;
 
@@ -263,10 +265,15 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
         }
     }
 
+    const resetBase = isDashboardHostname(hostname) && !affiliate
+        ? getDashboardSiteUrl()
+        : (orgInfo?.custom_domain ? `https://${orgInfo.custom_domain}` : portalUrl);
+    const redirectTo = buildAuthCallbackUrl(resetBase, '/reset-password');
+
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'recovery',
         email,
-        options: { redirectTo: `https://partners.affiliatemango.com/auth/callback?next=/reset-password` }
+        options: { redirectTo }
     });
 
     if (linkErr) console.error('[sendPasswordReset] Generate Link Error:', linkErr.message);
@@ -308,11 +315,7 @@ export async function sendOtpEmail(formData: FormData): Promise<{ error?: string
 
     const admin = getAdminClient();
 
-    const siteHost = await (await import('next/headers')).headers().then(h =>
-        h.get('x-mango-tenant-host') || h.get('x-forwarded-host') || h.get('host') || 'partners.affiliatemango.com'
-    );
-    const isLocal = siteHost.includes('localhost');
-    const SITE_URL = isLocal ? `http://${siteHost}` : `https://${siteHost}`;
+    const portalUrl = await getPortalSiteUrl();
 
     const { getResolvedOrgId } = await import('@/utils/supabase/server');
     const orgId = await getResolvedOrgId();
@@ -334,13 +337,13 @@ export async function sendOtpEmail(formData: FormData): Promise<{ error?: string
         .eq('id', orgId)
         .maybeSingle();
 
-    const appUrl = orgInfo?.custom_domain ? `https://${orgInfo.custom_domain}` : SITE_URL;
+    const appUrl = orgInfo?.custom_domain ? `https://${orgInfo.custom_domain}` : portalUrl;
 
     // Generate — email_otp is the 6-digit code, we handle our own email sending
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'magiclink',
         email,
-        options: { redirectTo: 'https://partners.affiliatemango.com/portal' },
+        options: { redirectTo: `${appUrl.replace(/\/$/, '')}/portal` },
     });
 
     if (linkErr || !linkData?.properties?.email_otp) {
