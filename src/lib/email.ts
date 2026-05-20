@@ -54,6 +54,8 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
         return { success: false, error: 'SMTP Unconfigured' };
     }
 
+    console.log(`[Email Dispatcher] Resolved config: Host: ${host}, Port: ${port}, User: ${user}, From: ${fromEmail}, Pass length: ${pass ? pass.length : 0}`);
+
     const originalHost = host;
     if (host && !host.match(/^[0-9.]+$/)) {
         try {

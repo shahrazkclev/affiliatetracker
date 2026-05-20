@@ -167,12 +167,14 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
   </td></tr></table>
 </body></html>`;
 
-    await dispatchEmail(null, {
+    console.log(`[Register] Dispatching verification email to ${email}`);
+    const emailResult = await dispatchEmail(null, {
         to: email,
         subject: 'Verify your email address — AffiliateMango',
         html: verificationHtml,
         _rawHtmlOverride: true
     });
+    console.log(`[Register] Verification email dispatch result:`, emailResult);
 
     revalidatePath('/', 'layout');
 
