@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { registerPlatformOwner } from "./actions";
-import { AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Loader2, CheckCircle2, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RegisterPage() {
     const [error, setError] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
+    const [verifyEmail, setVerifyEmail] = useState(false);
+    const [registeredEmail, setRegisteredEmail] = useState('');
 
     async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -19,8 +21,73 @@ export default function RegisterPage() {
         
         startTransition(async () => {
             const result = await registerPlatformOwner(fd);
-            if (result?.error) setError(result.error);
+            if (result?.error) {
+                setError(result.error);
+            } else if (result?.verifyEmail) {
+                setRegisteredEmail(result.email || '');
+                setVerifyEmail(true);
+            }
         });
+    }
+
+    if (verifyEmail) {
+        return (
+            <div className="min-h-screen flex bg-[#0e0e10] text-zinc-100 font-sans">
+                {/* Left Panel: Context & Value Props (Hidden on mobile) */}
+                <div className="hidden lg:flex w-[45%] bg-[#0a0a0a] border-r border-zinc-800 flex-col px-12 py-16 justify-between relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(234,88,12,0.15)_0%,transparent_50%)] pointer-events-none" />
+                    
+                    <div className="relative z-10">
+                        <Link href="/" className="flex items-center gap-2 mb-16 group">
+                            <img 
+                                src="/affiliatemango_logo.png" 
+                                alt="AffiliateMango Logo" 
+                                className="w-10 h-10 object-contain drop-shadow-[0_0_15px_rgba(249,115,22,0.5)] group-hover:scale-110 transition-transform"
+                            />
+                            <span className="font-extrabold text-2xl tracking-tighter">Affiliate<span className="text-orange-500">Mango</span></span>
+                        </Link>
+
+                        <h1 className="text-4xl font-extrabold tracking-tight leading-tight mb-6">
+                            Check your inbox.
+                        </h1>
+                        <p className="text-zinc-400 text-lg mb-12">
+                            We've sent a verification link to <span className="text-orange-400 font-semibold">{registeredEmail}</span>. Please click the link to confirm your account.
+                        </p>
+                    </div>
+                </div>
+
+                {/* Right Panel: Verification Info */}
+                <div className="flex-1 flex flex-col justify-center px-6 md:px-16 lg:px-24 xl:px-32 relative">
+                    <div className="w-full max-w-md mx-auto space-y-6">
+                        {/* Mobile logo header */}
+                        <div className="lg:hidden flex justify-center mb-8">
+                            <Link href="/" className="flex items-center gap-2">
+                                <img src="/affiliatemango_logo.png" alt="Logo" className="w-12 h-12 object-contain" />
+                            </Link>
+                        </div>
+                        
+                        <div className="w-16 h-16 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-center">
+                            <Mail className="w-8 h-8 text-orange-400" />
+                        </div>
+
+                        <div>
+                            <h2 className="text-3xl font-bold mb-2">Verify your email</h2>
+                            <p className="text-zinc-400 leading-relaxed">
+                                A verification email has been sent. Once you've clicked the verification link, click the button below to sign in to your workspace.
+                            </p>
+                        </div>
+
+                        <div className="pt-4">
+                            <Link href="/login">
+                                <Button className="w-full bg-orange-500 hover:bg-orange-400 text-white font-bold h-12 rounded-xl shadow-[0_0_20px_rgba(249,115,22,0.3)] transition-all">
+                                    I have verified my email
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (

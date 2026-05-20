@@ -42,7 +42,16 @@ export function StripeConnectCard() {
         setLoading(true);
         const s = await getStripeStatus();
         setStatus(s as Status);
-        setUrlInput(s.appUrl || '');
+        
+        let defaultUrl = s?.appUrl;
+        if (!defaultUrl) {
+            if (typeof window !== 'undefined') {
+                defaultUrl = window.location.origin;
+            } else if (process.env.NEXT_PUBLIC_SITE_URL) {
+                defaultUrl = process.env.NEXT_PUBLIC_SITE_URL;
+            }
+        }
+        setUrlInput(defaultUrl || '');
         setLoading(false);
     }
 
