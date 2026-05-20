@@ -1,5 +1,10 @@
 import nodemailer from 'nodemailer';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import dns from 'dns';
+import { promisify } from 'util';
+
+const lookupPromise = promisify(dns.lookup);
+
 
 interface EmailOptions {
     to: string;
@@ -49,12 +54,26 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
         return { success: false, error: 'SMTP Unconfigured' };
     }
 
+    const originalHost = host;
+    if (host && !host.match(/^[0-9.]+$/)) {
+        try {
+            const res = await lookupPromise(host, { family: 4 });
+            host = res.address;
+        } catch (e: any) {
+            console.error(`[Email Dispatcher] Failed to resolve host ${originalHost} to IPv4:`, e.message);
+        }
+    }
+
     try {
         const transporter = nodemailer.createTransport({
             host,
             port,
             secure: port === 465, // true for 465, false for other ports
-            auth: { user, pass }
+            auth: { user, pass },
+            tls: {
+                servername: originalHost,
+                rejectUnauthorized: false
+            }
         });
 
         // Scaffold standard styling directly into generic emails
