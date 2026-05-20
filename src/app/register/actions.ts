@@ -5,13 +5,95 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { dispatchEmail } from '@/lib/email';
-import { buildAuthCallbackUrl, getDashboardSiteUrl } from '@/lib/auth-urls';
+import { getPlatformSignupRedirectTo } from '@/lib/auth-urls';
 
 function getAdminClient() {
     return createAdminClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+}
+
+async function findAuthUserByEmail(
+    admin: ReturnType<typeof getAdminClient>,
+    email: string
+) {
+    let page = 1;
+    const perPage = 200;
+    while (page <= 5) {
+        const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+        if (error) {
+            console.error('[Register] listUsers error:', error);
+            return null;
+        }
+        const match = data.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+        if (match) return match;
+        if (!data.users.length || data.users.length < perPage) break;
+        page += 1;
+    }
+    return null;
+}
+
+async function generateSignupVerificationLink(
+    admin: ReturnType<typeof getAdminClient>,
+    email: string,
+    password: string,
+    redirectTo: string,
+    metadata: Record<string, unknown>
+) {
+    let result = await admin.auth.admin.generateLink({
+        type: 'signup',
+        email,
+        password,
+        options: { redirectTo, data: metadata },
+    });
+    if (!result.error) return result;
+
+    // Existing unverified user — signup+password often fails; use invite link instead
+    console.warn('[Register] signup generateLink failed, trying invite:', result.error.message);
+    result = await admin.auth.admin.generateLink({
+        type: 'invite',
+        email,
+        options: { redirectTo, data: metadata },
+    });
+    if (!result.error) return result;
+
+    // Last resort: bare callback URL (must still be on dashboard allow list)
+    const fallbackRedirect = redirectTo.split('?')[0];
+    if (fallbackRedirect !== redirectTo) {
+        console.warn('[Register] invite generateLink failed, retrying with fallback redirect:', fallbackRedirect);
+        result = await admin.auth.admin.generateLink({
+            type: 'invite',
+            email,
+            options: { redirectTo: fallbackRedirect, data: metadata },
+        });
+    }
+
+    return result;
+}
+
+async function sendVerificationEmail(
+    email: string,
+    actionLink: string
+): Promise<{ error?: string }> {
+    const html = buildVerificationHtml(actionLink);
+    console.log(`[Register] Dispatching verification email to ${email}`);
+    const result = await dispatchEmail(null, {
+        to: email,
+        subject: 'Verify your email address — AffiliateMango',
+        html,
+        _rawHtmlOverride: true,
+    });
+    console.log('[Register] Verification email dispatch result:', result);
+
+    if (!result.success) {
+        return {
+            error: result.error === 'SMTP Unconfigured'
+                ? 'Email could not be sent — mail server is not configured. Please contact support.'
+                : `Email could not be sent: ${result.error || 'unknown error'}`,
+        };
+    }
+    return {};
 }
 
 function buildVerificationHtml(actionLink: string): string {
@@ -64,66 +146,55 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
     const { data: pwCheck } = await admin.rpc('check_user_has_password', { user_email: email });
     const userExists = pwCheck && pwCheck[0]?.user_exists === true;
 
-    if (userExists) {
-        // Check if the existing user has confirmed their email
-        const { data: { users } } = await admin.auth.admin.listUsers();
-        const existingUser = users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+    const redirectTo = getPlatformSignupRedirectTo();
+    const userMetadata = { full_name: companyName };
 
-        if (existingUser?.email_confirmed_at) {
-            // Fully verified account — block re-registration
+    if (userExists) {
+        const { data: isConfirmed } = await admin.rpc('check_email_confirmed', { user_email: email });
+        if (isConfirmed) {
             return { error: 'An account with this email already exists.' };
         }
 
-        // User exists but is UNVERIFIED — regenerate link and resend email
         console.log(`[Register] User ${email} exists but is unverified. Resending verification email.`);
 
-        const redirectTo = buildAuthCallbackUrl(getDashboardSiteUrl(), '/register/configure');
+        const existingUser = await findAuthUserByEmail(admin, email);
+        if (existingUser) {
+            await admin.auth.admin.updateUserById(existingUser.id, { password });
+        }
 
-        const { data: resendLinkData, error: resendErr } = await admin.auth.admin.generateLink({
-            type: 'signup',
+        const { data: resendLinkData, error: resendErr } = await generateSignupVerificationLink(
+            admin,
             email,
             password,
-            options: {
-                redirectTo,
-                data: { full_name: companyName }
-            }
-        });
+            redirectTo,
+            userMetadata
+        );
 
         if (resendErr || !resendLinkData?.properties?.action_link) {
             console.error('[Register] Failed to regenerate verification link for unverified user:', resendErr);
-            return { error: 'Could not resend verification email. Please try again later.' };
+            return { error: resendErr?.message || 'Could not resend verification email. Please try again later.' };
         }
 
-        const resendVerificationHtml = buildVerificationHtml(resendLinkData.properties.action_link);
-
-        console.log(`[Register] Dispatching verification email to ${email} (resend for unverified user)`);
-        const resendResult = await dispatchEmail(null, {
-            to: email,
-            subject: 'Verify your email address — AffiliateMango',
-            html: resendVerificationHtml,
-            _rawHtmlOverride: true
-        });
-        console.log(`[Register] Verification email dispatch result:`, resendResult);
+        const emailErr = await sendVerificationEmail(email, resendLinkData.properties.action_link);
+        if (emailErr.error) return emailErr;
 
         return { verifyEmail: true, email };
     }
 
-    const redirectTo = buildAuthCallbackUrl(getDashboardSiteUrl(), '/register/configure');
-
     // Create user and generate verification link (does not automatically send email)
-    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-        type: 'signup',
+    const { data: linkData, error: linkErr } = await generateSignupVerificationLink(
+        admin,
         email,
         password,
-        options: {
-            redirectTo,
-            data: {
-                full_name: companyName
-            }
-        }
-    });
+        redirectTo,
+        userMetadata
+    );
 
     if (linkErr) return { error: linkErr.message };
+    if (!linkData?.properties?.action_link) {
+        console.error('[Register] generateLink succeeded but action_link is missing');
+        return { error: 'Could not generate verification link. Please try again.' };
+    }
     if (!linkData?.user) return { error: 'Failed to create user account.' };
 
     const userId = linkData.user.id;
@@ -208,17 +279,8 @@ export async function registerPlatformOwner(formData: FormData): Promise<{ error
         }
     }
 
-    // Send email verification manually via AffiliateMango branding
-    const verificationHtml = buildVerificationHtml(linkData.properties.action_link);
-
-    console.log(`[Register] Dispatching verification email to ${email}`);
-    const emailResult = await dispatchEmail(null, {
-        to: email,
-        subject: 'Verify your email address — AffiliateMango',
-        html: verificationHtml,
-        _rawHtmlOverride: true
-    });
-    console.log(`[Register] Verification email dispatch result:`, emailResult);
+    const emailErr = await sendVerificationEmail(email, linkData.properties.action_link);
+    if (emailErr.error) return emailErr;
 
     revalidatePath('/', 'layout');
 

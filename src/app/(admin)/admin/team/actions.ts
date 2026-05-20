@@ -63,7 +63,8 @@ export async function inviteTeamMember(formData: FormData): Promise<any> {
 
     // Generate Magic Link — team invites always land on the dashboard
     const { buildAuthCallbackUrl, getDashboardSiteUrl } = await import('@/lib/auth-urls');
-    const redirectTo = buildAuthCallbackUrl(getDashboardSiteUrl(), '/admin');
+    const dashboardUrl = getDashboardSiteUrl();
+    const redirectTo = buildAuthCallbackUrl(dashboardUrl, '/admin');
 
     const { data: linkData } = await admin.auth.admin.generateLink({
         type: 'magiclink',
@@ -83,7 +84,7 @@ export async function inviteTeamMember(formData: FormData): Promise<any> {
             `You've been invited to manage the workspace for <b>${orgName}</b>. Click below to securely access the dashboard.`,
             'Access Dashboard',
             linkData.properties.action_link,
-            SITE_URL,
+            dashboardUrl,
             orgInfo?.logo_url,
             orgInfo?.logo_email_height
         );

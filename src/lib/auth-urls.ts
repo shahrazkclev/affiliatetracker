@@ -42,7 +42,13 @@ export async function getPortalSiteUrl(): Promise<string> {
 
 /** Supabase auth redirect target — must match an entry in the Supabase redirect allow list */
 export function buildAuthCallbackUrl(siteUrl: string, nextPath: string): string {
-    const base = siteUrl.replace(/\/$/, '');
+    const url = new URL('/auth/callback', siteUrl.replace(/\/$/, ''));
     const next = nextPath.startsWith('/') ? nextPath : `/${nextPath}`;
-    return `${base}/auth/callback?next=${encodeURIComponent(next)}`;
+    url.searchParams.set('next', next);
+    return url.toString();
+}
+
+/** Platform-owner signup verification redirect (dashboard only) */
+export function getPlatformSignupRedirectTo(): string {
+    return buildAuthCallbackUrl(getDashboardSiteUrl(), '/register/configure');
 }
