@@ -1,0 +1,21 @@
+# AffiliateMango
+
+> AffiliateMango is an automated affiliate network engine designed to help SaaS platforms and online businesses create, track, and pay out affiliate programs in minutes without high fees or complex custom backend integration.
+
+## Core Features
+
+- **Automatic Attribution**: Tracks visits using client-side cookies (configurable cookie duration, defaults to 90 days) and associates checkouts seamlessly.
+- **Stripe Webhook Integration**: Listens to Stripe checkout events (`checkout.session.completed`) to automatically credit affiliates based on referral codes.
+- **Direct Payouts**: Uses Stripe Connect to transfer earnings to affiliate bank accounts.
+- **White-Label Partner Portals**: Custom branding, theme control, logo uploads, and real-time graphs showing clicks, conversions, and earnings for partners.
+- **Fraud Prevention**: Prevents self-referral abuse, duplicate conversion logging, and checks for row-level security.
+
+## Key URLs
+
+- [Homepage](https://affiliatemango.com/): Product overview, key highlights, and main value proposition.
+- [Pricing](https://affiliatemango.com/pricing): Information about subscription plans (Base and Pro tiers) and features included.
+- [Developer Documentation](https://affiliatemango.com/docs/api): Integration instructions, script installation parameters, and custom API usage.
+- [Registration](https://affiliatemango.com/register): Setup form for new merchant/platform owners to provision a workspace.
+- [Login](https://affiliatemango.com/login): Consolidated entrance for merchants (Admin Dashboard) and affiliates (Affiliate Portal).
+- [Sitemap](https://affiliatemango.com/sitemap.xml): Machine-readable XML list of all public marketing pages.
+- [Robots Configuration](https://affiliatemango.com/robots.txt): Crawler rules and disallowed admin/portal directories.

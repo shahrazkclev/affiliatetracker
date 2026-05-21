@@ -8,6 +8,57 @@ import Footer from '../components/Footer';
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-[#0a0a0a] text-[#f3f4f6]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "Product",
+                "@id": "https://affiliatemango.com/#product",
+                "name": "AffiliateMango",
+                "image": "https://affiliatemango.com/affiliatemango_logo.png",
+                "description": "Create powerful affiliate programs in minutes. We handle Stripe webhooks, partner payouts, and seamless tracking so you don't have to.",
+                "brand": {
+                  "@type": "Brand",
+                  "name": "AffiliateMango"
+                }
+              },
+              {
+                "@type": "FAQPage",
+                "@id": "https://affiliatemango.com/#faq",
+                "mainEntity": [
+                  {
+                    "@type": "Question",
+                    "name": "Does it work with customized checkouts?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Absolutely. As long as you generate Webhooks on successful checkout, we attribute the sale automatically—even if they buy months later on a different domain."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "How are affiliates paid out?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "Commissions calculate instantly in the system. When it's time for payout, we securely integrate with Stripe Connect allowing bulk transfers, ensuring no middle-man fees except standard routing costs."
+                    }
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Do I need extensive development experience?",
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": "If you can paste a Javascript tag inside a website builder (like Framer, Webflow, or Shopify), you're ready to go. The automated backend handles everything securely."
+                    }
+                  }
+                ]
+              }
+            ]
+          })
+        }}
+      />
 
 
       {/* Hero Section */}
