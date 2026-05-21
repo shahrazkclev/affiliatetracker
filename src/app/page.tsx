@@ -359,9 +359,9 @@ export default function Home() {
           
           <div className="relative z-10 mt-4">
             <div className="absolute -inset-2 bg-gradient-to-r from-orange-500 to-rose-500 rounded-full blur-xl opacity-50 group-hover:opacity-80 transition duration-500"></div>
-            <a href="http://localhost:3000/register" className="relative flex items-center gap-3 px-10 py-5 bg-white text-black hover:bg-zinc-200 rounded-full font-bold text-xl shadow-2xl transition-all hover:scale-105 active:scale-95">
+            <Link href="/register" className="relative flex items-center gap-3 px-10 py-5 bg-white text-black hover:bg-zinc-200 rounded-full font-bold text-xl shadow-2xl transition-all hover:scale-105 active:scale-95">
               Build Your Program Now <ArrowRight className="w-6 h-6" />
-            </a>
+            </Link>
           </div>
         </div>
       </section>

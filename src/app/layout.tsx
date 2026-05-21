@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://affiliatemango.com'),
   title: "AffiliateMango | Automated Affiliate Network Engine",
   description: "Create powerful affiliate programs in minutes. We handle Stripe webhooks, partner payouts, and seamless tracking so you don't have to.",
+  alternates: {
+    canonical: './',
+  },
 };
 
 export default function RootLayout({
