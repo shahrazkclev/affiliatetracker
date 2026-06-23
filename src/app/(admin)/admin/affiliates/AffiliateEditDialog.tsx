@@ -15,6 +15,8 @@ export type EditableAffiliate = {
     name: string;
     email: string;
     payout_email?: string | null;
+    paypal_email?: string | null;
+    wise_email?: string | null;
     referral_code?: string | null;
     ref_code?: string | null;
     notes?: string | null;
@@ -204,16 +206,29 @@ export function AffiliateEditDialog({ affiliate, open, onOpenChange, campaigns =
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="grid gap-1.5">
-                            <Label htmlFor="af-payout" className="text-zinc-300 text-xs">Payout Email</Label>
+                            <Label htmlFor="af-paypal" className="text-zinc-300 text-xs">PayPal Payout Email</Label>
                             <Input
-                                id="af-payout"
-                                name="payout_email"
+                                id="af-paypal"
+                                name="paypal_email"
                                 type="email"
-                                defaultValue={affiliate.payout_email || ''}
+                                defaultValue={affiliate.paypal_email || affiliate.payout_email || ''}
                                 placeholder={affiliate.email}
                                 className="bg-zinc-900 border-zinc-700 text-white focus-visible:ring-orange-500 h-9 text-sm"
                             />
                         </div>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="af-wise" className="text-zinc-300 text-xs">Wise Payout Email</Label>
+                            <Input
+                                id="af-wise"
+                                name="wise_email"
+                                type="email"
+                                defaultValue={affiliate.wise_email || affiliate.payout_email || ''}
+                                placeholder={affiliate.email}
+                                className="bg-zinc-900 border-zinc-700 text-white focus-visible:ring-orange-500 h-9 text-sm"
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
                         <div className="grid gap-1.5">
                             <Label htmlFor="af-refcode" className="text-zinc-300 text-xs">Referral Code</Label>
                             <Input
@@ -224,15 +239,13 @@ export function AffiliateEditDialog({ affiliate, open, onOpenChange, campaigns =
                                 placeholder="e.g. JOHN20"
                             />
                         </div>
-                    </div>
-
-                    {/* Campaign */}
-                    <div className="grid gap-1.5">
-                        <Label htmlFor="af-campaign" className="text-zinc-300 text-xs">Assigned Campaign</Label>
-                        <select id="af-campaign" name="campaign_id" defaultValue={affiliate.campaign_id || ''} className="flex h-9 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer">
-                            <option value="">No campaign</option>
-                            {campaigns?.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
-                        </select>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="af-campaign" className="text-zinc-300 text-xs">Assigned Campaign</Label>
+                            <select id="af-campaign" name="campaign_id" defaultValue={affiliate.campaign_id || ''} className="flex h-9 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer">
+                                <option value="">No campaign</option>
+                                {campaigns?.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                            </select>
+                        </div>
                     </div>
 
                     {/* Stripe Promo Code */}

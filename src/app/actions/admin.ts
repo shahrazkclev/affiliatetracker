@@ -14,7 +14,9 @@ export async function updateAffiliate(id: string, formData: FormData) {
 
     const name               = formData.get('name') as string;
     const email              = formData.get('email') as string;
-    const payout_email       = formData.get('payout_email') as string || null;
+    const paypal_email       = formData.get('paypal_email') as string || null;
+    const wise_email         = formData.get('wise_email') as string || null;
+    const payout_email       = paypal_email || wise_email || null;
     const campaign_id        = formData.get('campaign_id') as string || null;
     const referral_code      = formData.get('referral_code') as string || null;
     const stripe_promo_code  = formData.get('stripe_promo_code') as string || null;
@@ -23,7 +25,7 @@ export async function updateAffiliate(id: string, formData: FormData) {
 
     const { error } = await supabase
         .from('affiliates')
-        .update({ name, email, payout_email, campaign_id, referral_code, stripe_promo_code, stripe_promo_id, notes })
+        .update({ name, email, payout_email, paypal_email, wise_email, campaign_id, referral_code, stripe_promo_code, stripe_promo_id, notes })
         .eq('id', id);
 
     if (error) return { success: false, error: error.message };

@@ -1,9 +1,7 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { createClient, getResolvedOrgId, getActiveAffiliateProfile } from "@/utils/supabase/server";
 import { NotificationSettings } from "./NotificationSettings";
+import { ProfileSettingsCard } from "./ProfileSettingsCard";
+import { PayoutSettingsCard } from "./PayoutSettingsCard";
 import { redirect } from "next/navigation";
 
 export default async function AffiliateSettingsPage() {
@@ -24,6 +22,10 @@ export default async function AffiliateSettingsPage() {
     const firstName = nameParts[0] || '';
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
+    // Separate payout email fallbacks
+    const defaultPayout = affiliate?.payout_email || affiliate?.email || user?.email || '';
+    const paypalEmail = affiliate?.paypal_email || defaultPayout;
+    const wiseEmail = affiliate?.wise_email || defaultPayout;
 
     return (
         <div className="space-y-6 w-full max-w-6xl mx-auto">
@@ -32,55 +34,19 @@ export default async function AffiliateSettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl w-full">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-semibold text-zinc-100">Profile</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="firstName" className="text-zinc-300">First Name</Label>
-                                <Input id="firstName" defaultValue={firstName} className="bg-zinc-950 border-zinc-800 text-zinc-200 focus-visible:ring-orange-500" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="lastName" className="text-zinc-300">Last Name</Label>
-                                <Input id="lastName" defaultValue={lastName} className="bg-zinc-950 border-zinc-800 text-zinc-200 focus-visible:ring-orange-500" />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="text-zinc-300">Email Address</Label>
-                            <Input id="email" type="email" defaultValue={affiliate?.email || user?.email || ''} className="bg-zinc-950 border-zinc-800 text-zinc-200 focus-visible:ring-orange-500" />
-                        </div>
-                        <Button className="bg-orange-600 hover:bg-orange-500 text-black font-semibold rounded-md mt-2">
-                            Save Changes
-                        </Button>
-                    </CardContent>
-                </Card>
+                <ProfileSettingsCard 
+                    affiliateId={affiliate.id}
+                    initialFirstName={firstName}
+                    initialLastName={lastName}
+                    initialEmail={affiliate?.email || user?.email || ''}
+                />
 
                 <div className="space-y-6">
-                    <Card className="bg-zinc-900 border-zinc-800/80 shadow-xl w-full">
-                        <CardHeader>
-                            <CardTitle className="text-lg font-semibold text-zinc-100">Payouts</CardTitle>
-                            <CardDescription className="text-zinc-500">
-                                Configure how you want to get paid.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="payoutEmail" className="text-zinc-300">Payout Email (PayPal/Wise)</Label>
-                                <Input
-                                    id="payoutEmail"
-                                    type="email"
-                                    defaultValue={affiliate?.payout_email || affiliate?.email || user?.email || ''}
-                                    className="bg-zinc-950 border-zinc-800 text-zinc-200 focus-visible:ring-orange-500"
-                                />
-                                <p className="text-xs text-zinc-500">The email address where your commissions will be sent.</p>
-                            </div>
-                            <Button className="bg-orange-600 hover:bg-orange-500 text-black font-semibold rounded-md mt-2">
-                                Save Payout Info
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    <PayoutSettingsCard 
+                        affiliateId={affiliate.id}
+                        initialPaypalEmail={paypalEmail}
+                        initialWiseEmail={wiseEmail}
+                    />
 
                     <NotificationSettings 
                         affiliateId={affiliate?.id || ''}
@@ -97,3 +63,4 @@ export default async function AffiliateSettingsPage() {
         </div>
     );
 }
+

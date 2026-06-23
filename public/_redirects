@@ -1,0 +1,3 @@
+# Redirect www to non-www (HTTPS is forced by Netlify by default)
+https://www.affiliatemango.com/* https://affiliatemango.com/:splat 301!
+http://www.affiliatemango.com/* https://affiliatemango.com/:splat 301!
