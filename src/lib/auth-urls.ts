@@ -16,7 +16,7 @@ export async function getRequestHostname(): Promise<string> {
 }
 
 export function isDashboardHostname(hostname: string): boolean {
-    return DASHBOARD_HOSTS.has(hostname);
+    return hostname.startsWith('dashboard.') || hostname.startsWith('admin.') || DASHBOARD_HOSTS.has(hostname);
 }
 
 /** Base URL for org-portal / affiliate auth flows (tenant domain, partners, or localhost) */

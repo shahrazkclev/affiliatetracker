@@ -265,8 +265,8 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
         }
     }
 
-    const resetBase = isDashboardHostname(hostname) && !affiliate
-        ? getDashboardSiteUrl()
+    const resetBase = isDashboardHostname(hostname)
+        ? `https://${hostname}`
         : (orgInfo?.custom_domain ? `https://${orgInfo.custom_domain}` : portalUrl);
     const redirectTo = buildAuthCallbackUrl(resetBase, '/reset-password');
 
@@ -276,7 +276,10 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
         options: { redirectTo }
     });
 
-    if (linkErr) console.error('[sendPasswordReset] Generate Link Error:', linkErr.message);
+    if (linkErr) {
+        console.error('[sendPasswordReset] Generate Link Error:', linkErr.message);
+        return { error: `Failed to generate reset link: ${linkErr.message}` };
+    }
 
     if (linkData?.properties?.action_link) {
         const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
@@ -291,10 +294,14 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
             logoUrl,
             logoHeight
         );
-        await dispatchEmail(orgId, { to: email, subject: 'Reset Your Password', html: htmlContent, _rawHtmlOverride: true } as any);
+        const emailResult = await dispatchEmail(orgId, { to: email, subject: 'Reset Your Password', html: htmlContent, _rawHtmlOverride: true } as any);
+        console.log('[sendPasswordReset] Email dispatch result:', emailResult);
+        if (!emailResult.success) {
+            console.error('[sendPasswordReset] Email dispatch failed:', emailResult.error);
+            return { error: `Failed to deliver email: ${emailResult.error}` };
+        }
     }
 
-    // Always return success to prevent email enumeration
     return {};
 }
 
