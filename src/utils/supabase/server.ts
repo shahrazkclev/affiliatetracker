@@ -57,10 +57,17 @@ export async function getResolvedOrgId(): Promise<string | null> {
         // Try exact match on custom_domain or app_url
         const possibleSlug = searchValue.replace('.affiliatemango.com', '');
         
+        // Extract root domain to handle dashboard/admin subdomains of custom domains (e.g. dashboard.cleverpoly.store -> cleverpoly.store)
+        let rootDomain = searchValue;
+        const parts = searchValue.split('.');
+        if (parts.length > 2) {
+            rootDomain = parts.slice(-2).join('.');
+        }
+
         const { data: orgByDomain } = await admin
             .from('organizations')
             .select('id')
-            .or(`custom_domain.ilike.${searchValue},app_url.ilike.${searchValue},app_url.ilike.${possibleSlug}`)
+            .or(`custom_domain.ilike.%${rootDomain}%,app_url.ilike.%${rootDomain}%,custom_domain.ilike.${searchValue},app_url.ilike.${searchValue},app_url.ilike.${possibleSlug}`)
             .limit(1);
 
         if (orgByDomain && orgByDomain.length > 0) return orgByDomain[0].id;
