@@ -6,6 +6,7 @@ interface EmailOptions {
     subject: string;
     html: string;
     _rawHtmlOverride?: boolean;
+    brandNameOverride?: string;
 }
 
 /** Strip wrapping quotes — common when env vars are pasted with "..." in hosting dashboards */
@@ -27,7 +28,7 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
     let user = cleanEnv(process.env.GLOBAL_SMTP_USER);
     let pass = cleanEnv(process.env.GLOBAL_SMTP_PASS);
     let fromEmail = cleanEnv(process.env.GLOBAL_SMTP_FROM) || 'noreply@affiliatemango.com';
-    let brandName = 'AffiliateMango';
+    let brandName = options.brandNameOverride || 'AffiliateMango';
     let brandColor = '#f97316'; // orange-500
 
     if (orgId) {
@@ -42,7 +43,7 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
             .single();
 
         if (org) {
-            brandName = org.name || brandName;
+            brandName = options.brandNameOverride || org.name || brandName;
             brandColor = org.primary_color || brandColor;
 
             // Override with tenant's specific SMTP if all required fields are present
@@ -104,8 +105,9 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
         </div>
         `;
 
+            const senderName = brandName === 'AffiliateMango' ? 'AffiliateMango' : `${brandName} Partners`;
             await transporter.sendMail({
-                from: `"${brandName} Partners" <${fromEmail}>`,
+                from: `"${senderName}" <${fromEmail}>`,
                 to: options.to,
                 subject: options.subject,
                 html: emailHTML,

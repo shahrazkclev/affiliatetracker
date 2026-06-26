@@ -265,7 +265,8 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
         }
     }
 
-    const resetBase = isDashboardHostname(hostname)
+    const isAdmin = isDashboardHostname(hostname);
+    const resetBase = isAdmin
         ? `https://${hostname}`
         : (orgInfo?.custom_domain ? `https://${orgInfo.custom_domain}` : portalUrl);
     const redirectTo = buildAuthCallbackUrl(resetBase, '/reset-password');
@@ -285,16 +286,28 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
         const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
         const { dispatchEmail } = await import('@/lib/email');
         
+        // Use AffiliateMango logo/branding for admins, otherwise use organization-specific logo/branding
+        const resolvedLogoUrl = isAdmin 
+            ? 'https://partners.affiliatemango.com/affiliatemango_logo.png' 
+            : logoUrl;
+        const resolvedLogoHeight = isAdmin ? 44 : logoHeight;
+        
         const htmlContent = AUTH_LINK_TEMPLATE(
             'Reset Password',
             'Someone requested a password reset for your account. If this was you, click the button below to choose a new password.',
             'Reset Password',
             linkData.properties.action_link,
-            appUrl,
-            logoUrl,
-            logoHeight
+            isAdmin ? `https://${hostname}` : appUrl,
+            resolvedLogoUrl,
+            resolvedLogoHeight
         );
-        const emailResult = await dispatchEmail(orgId, { to: email, subject: 'Reset Your Password', html: htmlContent, _rawHtmlOverride: true } as any);
+        const emailResult = await dispatchEmail(orgId, { 
+            to: email, 
+            subject: 'Reset Your Password', 
+            html: htmlContent, 
+            _rawHtmlOverride: true,
+            brandNameOverride: isAdmin ? 'AffiliateMango' : undefined
+        });
         console.log('[sendPasswordReset] Email dispatch result:', emailResult);
         if (!emailResult.success) {
             console.error('[sendPasswordReset] Email dispatch failed:', emailResult.error);
