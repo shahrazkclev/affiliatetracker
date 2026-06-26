@@ -130,6 +130,19 @@ export async function getActiveAffiliateProfile(orgId: string, email: string) {
             .eq('email', email)
             .eq('org_id', orgId);
         affiliates = data;
+
+        // Auto-link user_id if we matched by email but user_id is missing/unlinked
+        if (affiliates && affiliates.length > 0 && user?.id) {
+            for (const a of affiliates) {
+                if (!a.user_id) {
+                    await admin
+                        .from('affiliates')
+                        .update({ user_id: user.id })
+                        .eq('id', a.id);
+                    a.user_id = user.id; // update local object
+                }
+            }
+        }
     }
 
     if (!affiliates || affiliates.length === 0) return null;
