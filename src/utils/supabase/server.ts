@@ -105,11 +105,32 @@ export async function getActiveAffiliateProfile(orgId: string, email: string) {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
     
-    const { data: affiliates } = await admin
-        .from('affiliates')
-        .select('*, campaign:campaigns(name, landing_url), org:organizations(custom_domain)')
-        .eq('email', email)
-        .eq('org_id', orgId);
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    let affiliates = null;
+
+    // 1. Try matching by user_id first (survives email updates)
+    if (user?.id) {
+        const { data } = await admin
+            .from('affiliates')
+            .select('*, campaign:campaigns(name, landing_url), org:organizations(custom_domain)')
+            .eq('user_id', user.id)
+            .eq('org_id', orgId);
+        if (data && data.length > 0) {
+            affiliates = data;
+        }
+    }
+
+    // 2. Fallback to matching by email (for new signups before user_id links)
+    if (!affiliates || affiliates.length === 0) {
+        const { data } = await admin
+            .from('affiliates')
+            .select('*, campaign:campaigns(name, landing_url), org:organizations(custom_domain)')
+            .eq('email', email)
+            .eq('org_id', orgId);
+        affiliates = data;
+    }
 
     if (!affiliates || affiliates.length === 0) return null;
 
