@@ -51,12 +51,45 @@ export async function POST(req: NextRequest) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     const supabase = createSupabaseClient(supabaseUrl, supabaseServiceKey);
 
-    // Get org's webhook secret
-    const { data: org } = await supabase
+    // Resolve organization ID by hostname/headers
+    const rawHost = req.headers.get("x-mango-tenant-host") || req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+    const primaryHost = rawHost.split(',')[0].trim();
+    const hostname = primaryHost.split(':')[0].toLowerCase();
+
+    let resolvedOrgId = null;
+
+    if (hostname && hostname !== 'partners.affiliatemango.com' && !hostname.includes('localhost') && !hostname.includes('127.0.0.1') && hostname !== 'dashboard.affiliatemango.com' && hostname !== 'admin.affiliatemango.com') {
+        const possibleSlug = hostname.replace('.affiliatemango.com', '');
+        
+        let rootDomain = hostname;
+        const parts = hostname.split('.');
+        if (parts.length > 2) {
+            rootDomain = parts.slice(-2).join('.');
+        }
+
+        const { data: orgByDomain } = await supabase
+            .from('organizations')
+            .select('id')
+            .or(`custom_domain.ilike.%${rootDomain}%,app_url.ilike.%${rootDomain}%,custom_domain.ilike.${hostname},app_url.ilike.${hostname},app_url.ilike.${possibleSlug}`)
+            .limit(1);
+
+        if (orgByDomain && orgByDomain.length > 0) {
+            resolvedOrgId = orgByDomain[0].id;
+        }
+    }
+
+    // Get org details (webhook secret, keys, etc.)
+    let orgQuery = supabase
         .from('organizations')
-        .select('id, stripe_webhook_secret, stripe_secret_key, owner_id')
-        .limit(1)
-        .single();
+        .select('id, stripe_webhook_secret, stripe_secret_key, owner_id');
+
+    if (resolvedOrgId) {
+        orgQuery = orgQuery.eq('id', resolvedOrgId);
+    } else {
+        orgQuery = orgQuery.limit(1);
+    }
+
+    const { data: org } = await orgQuery.maybeSingle();
         
     const webhookSecret = org?.stripe_webhook_secret || process.env.STRIPE_WEBHOOK_SECRET;
 
