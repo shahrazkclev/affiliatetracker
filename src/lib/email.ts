@@ -126,5 +126,55 @@ export async function dispatchEmail(orgId: string | null, options: EmailOptions)
         }
     }
 
+    // Fallback to Global SMTP if tenant SMTP failed
+    const globalHost = cleanEnv(process.env.GLOBAL_SMTP_HOST);
+    const globalUser = cleanEnv(process.env.GLOBAL_SMTP_USER);
+    const globalPass = cleanEnv(process.env.GLOBAL_SMTP_PASS);
+    const globalFrom = cleanEnv(process.env.GLOBAL_SMTP_FROM) || 'noreply@affiliatemango.com';
+    const globalPort = parseInt(cleanEnv(process.env.GLOBAL_SMTP_PORT) || '465', 10);
+
+    if (globalHost && globalUser && globalPass && (host !== globalHost || user !== globalUser)) {
+        console.warn(`[Email Dispatcher] Tenant SMTP failed (${lastError?.message}). Falling back to Global SMTP (${globalHost})...`);
+        try {
+            const fallbackTransporter = nodemailer.createTransport({
+                host: globalHost,
+                port: globalPort,
+                secure: globalPort === 465,
+                auth: { user: globalUser, pass: globalPass },
+                connectionTimeout: 30_000,
+                greetingTimeout: 30_000,
+                socketTimeout: 30_000,
+                requireTLS: globalPort !== 465,
+                tls: { rejectUnauthorized: false },
+            });
+
+            const emailHTML = options._rawHtmlOverride ? options.html : `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 8px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="color: ${brandColor}; margin: 0; font-size: 24px; font-weight: bold;">${brandName}</h1>
+            </div>
+            <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); color: #333333;">
+                ${options.html}
+            </div>
+            <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #9ca3af;">
+                <p>Powered by AffiliateMango &copy; ${new Date().getFullYear()}</p>
+            </div>
+        </div>
+        `;
+
+            await fallbackTransporter.sendMail({
+                from: `"${brandName}" <${globalFrom}>`,
+                to: options.to,
+                subject: options.subject,
+                html: emailHTML,
+            });
+
+            console.log(`[Email Dispatcher] Global SMTP fallback succeeded!`);
+            return { success: true };
+        } catch (fallbackErr: any) {
+            console.error(`[Email Dispatcher] Global SMTP fallback also failed:`, fallbackErr.message);
+        }
+    }
+
     return { success: false, error: lastError?.message || 'SMTP send failed' };
 }

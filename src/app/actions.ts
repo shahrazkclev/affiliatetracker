@@ -44,8 +44,19 @@ export async function sendSignupConfirmation(formData: FormData): Promise<{ erro
         if (resolved) orgIdStr = resolved;
     }
 
-    const portalUrl = await getPortalSiteUrl();
+    // Resolve origin from request headers first (guaranteed to match the user's browser domain)
+    const { headers } = await import('next/headers');
+    const h = await headers();
+    const originHeader = h.get('origin') || h.get('referer');
+    let requestDomain = '';
+    if (originHeader) {
+        try {
+            const u = new URL(originHeader);
+            requestDomain = `${u.protocol}//${u.host}`;
+        } catch {}
+    }
 
+    const portalUrl = requestDomain || await getPortalSiteUrl();
     // Ensure user exists in auth.users without triggering Supabase default signup email
     await admin.auth.admin.createUser({
         email,
@@ -59,25 +70,34 @@ export async function sendSignupConfirmation(formData: FormData): Promise<{ erro
         const { data: orgData } = await admin.from('organizations').select('logo_url, logo_email_height, custom_domain').eq('id', orgIdStr).maybeSingle();
         if (orgData?.custom_domain) {
             appUrl = `https://${orgData.custom_domain}`;
+        } else if (requestDomain) {
+            appUrl = requestDomain;
         }
         logoUrl = orgData?.logo_url;
         logoHeight = orgData?.logo_email_height;
+    } else if (requestDomain) {
+        appUrl = requestDomain;
     }
-
-    const nextPath = orgIdStr ? `/apply/details?org_id=${orgIdStr}` : '/apply/details';
-    const redirectTo = buildAuthCallbackUrl(appUrl, nextPath);
 
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'magiclink',
         email,
-        options: { redirectTo },
     });
 
     if (linkErr) {
         return { error: linkErr.message };
     }
 
-    if (linkData?.properties?.action_link) {
+    const rawToken = linkData?.properties?.email_otp ||
+        (linkData?.properties?.action_link ? new URL(linkData.properties.action_link).searchParams.get('token') : null);
+
+    if (!rawToken) {
+        return { error: 'Failed to generate verification token.' };
+    }
+
+    const customActionLink = `${appUrl.replace(/\/$/, '')}/auth/otp?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(email)}&next=/applied`;
+
+    if (linkData?.properties) {
         const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
         const { dispatchEmail } = await import('@/lib/email');
 
@@ -85,7 +105,7 @@ export async function sendSignupConfirmation(formData: FormData): Promise<{ erro
             'Confirm Your Application',
             `Thank you for applying to join our affiliate program! Click the button below to verify your email address (${email}) and complete your application.`,
             'Confirm Application & Verify Email',
-            linkData.properties.action_link,
+            customActionLink,
             appUrl,
             logoUrl,
             logoHeight
@@ -186,24 +206,35 @@ export async function submitFullApplication(formData: FormData): Promise<{ error
         email_confirm: true,
     }).catch(() => {});
 
+    // Resolve origin from request headers first (guaranteed to match the user's browser domain)
+    const { headers } = await import('next/headers');
+    const h = await headers();
+    const originHeader = h.get('origin') || h.get('referer');
+    let requestDomain = '';
+    if (originHeader) {
+        try {
+            const u = new URL(originHeader);
+            requestDomain = `${u.protocol}//${u.host}`;
+        } catch {}
+    }
+
     // Send confirmation link using custom branded HTML email
-    const portalUrl = await getPortalSiteUrl();
+    const portalUrl = requestDomain || await getPortalSiteUrl();
     let appUrl = portalUrl;
     let logoUrl, logoHeight;
 
     const { data: orgData } = await admin.from('organizations').select('logo_url, logo_email_height, custom_domain').eq('id', orgId).maybeSingle();
     if (orgData?.custom_domain) {
         appUrl = `https://${orgData.custom_domain}`;
+    } else if (requestDomain) {
+        appUrl = requestDomain;
     }
     logoUrl = orgData?.logo_url;
     logoHeight = orgData?.logo_email_height;
 
-    const redirectTo = buildAuthCallbackUrl(appUrl, '/applied');
-
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'magiclink',
         email,
-        options: { redirectTo },
     });
 
     if (linkErr) {
@@ -211,7 +242,16 @@ export async function submitFullApplication(formData: FormData): Promise<{ error
         return { error: 'Failed to generate confirmation link: ' + linkErr.message };
     }
 
-    if (linkData?.properties?.action_link) {
+    const rawToken = linkData?.properties?.email_otp ||
+        (linkData?.properties?.action_link ? new URL(linkData.properties.action_link).searchParams.get('token') : null);
+
+    if (!rawToken) {
+        return { error: 'Failed to generate verification token.' };
+    }
+
+    const customActionLink = `${appUrl.replace(/\/$/, '')}/auth/otp?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(email)}&next=/applied`;
+
+    if (linkData?.properties) {
         const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
         const { dispatchEmail } = await import('@/lib/email');
 
@@ -219,7 +259,7 @@ export async function submitFullApplication(formData: FormData): Promise<{ error
             'Confirm Your Application',
             `Thank you for applying to join our affiliate program! Click the button below to verify your email address (${email}) and complete your application.`,
             'Confirm Application & Verify Email',
-            linkData.properties.action_link,
+            customActionLink,
             appUrl,
             logoUrl,
             logoHeight

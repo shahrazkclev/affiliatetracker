@@ -248,8 +248,28 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     const hostname = await getRequestHostname();
     const portalUrl = await getPortalSiteUrl();
     const admin = getAdminClient();
+
+    // Look up affiliate or organization owner / team member
     const { data: affiliate } = await admin.from('affiliates').select('org_id').eq('email', email).maybeSingle();
-    const orgId = affiliate?.org_id || await (await import('@/utils/supabase/server')).getResolvedOrgId();
+    let orgId = affiliate?.org_id;
+
+    if (!orgId) {
+        const { data: userAuth } = await admin.auth.admin.listUsers();
+        const foundUser = userAuth?.users?.find(u => u.email?.toLowerCase() === email);
+        if (foundUser) {
+            const { data: ownedOrg } = await admin.from('organizations').select('id').eq('owner_id', foundUser.id).maybeSingle();
+            if (ownedOrg) {
+                orgId = ownedOrg.id;
+            } else {
+                const { data: teamMem } = await admin.from('team_members').select('org_id').eq('user_id', foundUser.id).maybeSingle();
+                if (teamMem) orgId = teamMem.org_id;
+            }
+        }
+    }
+
+    if (!orgId) {
+        orgId = await (await import('@/utils/supabase/server')).getResolvedOrgId();
+    }
     
     let appUrl = portalUrl;
     let logoUrl, logoHeight;
@@ -274,7 +294,6 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'recovery',
         email,
-        options: { redirectTo }
     });
 
     if (linkErr) {
@@ -282,7 +301,16 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
         return { error: `Failed to generate reset link: ${linkErr.message}` };
     }
 
-    if (linkData?.properties?.action_link) {
+    const rawToken = linkData?.properties?.email_otp ||
+        (linkData?.properties?.action_link ? new URL(linkData.properties.action_link).searchParams.get('token') : null);
+
+    if (!rawToken) {
+        return { error: 'Failed to generate reset token.' };
+    }
+
+    const customActionLink = `${resetBase.replace(/\/$/, '')}/auth/otp?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(email)}&type=recovery`;
+
+    if (linkData?.properties) {
         const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
         const { dispatchEmail } = await import('@/lib/email');
         
@@ -296,7 +324,7 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
             'Reset Password',
             'Someone requested a password reset for your account. If this was you, click the button below to choose a new password.',
             'Reset Password',
-            linkData.properties.action_link,
+            customActionLink,
             isAdmin ? `https://${hostname}` : appUrl,
             resolvedLogoUrl,
             resolvedLogoHeight
