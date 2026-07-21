@@ -236,7 +236,16 @@ export async function setPassword(formData: FormData): Promise<{ error?: string 
     if (error) return { error: 'Could not set password: ' + error.message };
 
     revalidatePath('/', 'layout');
-    redirect('/portal');
+
+    // Check if team member / org owner -> send to /admin, else /portal
+    const { data: ownedOrg } = await admin.from('organizations').select('id').eq('owner_id', user.id).maybeSingle();
+    const { data: teamMem } = await admin.from('team_members').select('id').eq('user_id', user.id).maybeSingle();
+
+    if (ownedOrg || teamMem) {
+        redirect('/admin');
+    } else {
+        redirect('/portal');
+    }
 }
 
 /** Send password reset email */
@@ -245,24 +254,26 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
     const email = (formData.get('email') as string)?.trim().toLowerCase();
     if (!email) return { error: 'Email is required.' };
 
-    const hostname = await getRequestHostname();
     const portalUrl = await getPortalSiteUrl();
     const admin = getAdminClient();
 
     // Look up affiliate or organization owner / team member
     const { data: affiliate } = await admin.from('affiliates').select('org_id').eq('email', email).maybeSingle();
     let orgId = affiliate?.org_id;
+    let isOrgAdmin = false;
 
-    if (!orgId) {
-        const { data: userAuth } = await admin.auth.admin.listUsers();
-        const foundUser = userAuth?.users?.find(u => u.email?.toLowerCase() === email);
-        if (foundUser) {
-            const { data: ownedOrg } = await admin.from('organizations').select('id').eq('owner_id', foundUser.id).maybeSingle();
-            if (ownedOrg) {
-                orgId = ownedOrg.id;
-            } else {
-                const { data: teamMem } = await admin.from('team_members').select('org_id').eq('user_id', foundUser.id).maybeSingle();
-                if (teamMem) orgId = teamMem.org_id;
+    const { data: userAuth } = await admin.auth.admin.listUsers();
+    const foundUser = userAuth?.users?.find(u => u.email?.toLowerCase() === email);
+    if (foundUser) {
+        const { data: ownedOrg } = await admin.from('organizations').select('id').eq('owner_id', foundUser.id).maybeSingle();
+        if (ownedOrg) {
+            isOrgAdmin = true;
+            if (!orgId) orgId = ownedOrg.id;
+        } else {
+            const { data: teamMem } = await admin.from('team_members').select('org_id').eq('user_id', foundUser.id).maybeSingle();
+            if (teamMem) {
+                isOrgAdmin = true;
+                if (!orgId) orgId = teamMem.org_id;
             }
         }
     }
@@ -271,7 +282,6 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
         orgId = await (await import('@/utils/supabase/server')).getResolvedOrgId();
     }
     
-    let appUrl = portalUrl;
     let logoUrl, logoHeight;
     let orgInfo: { logo_url?: string; logo_email_height?: number; custom_domain?: string } | null = null;
 
@@ -280,16 +290,16 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
         orgInfo = data;
         logoUrl = orgInfo?.logo_url;
         logoHeight = orgInfo?.logo_email_height;
-        if (orgInfo?.custom_domain) {
-            appUrl = `https://${orgInfo.custom_domain}`;
-        }
     }
 
-    const isAdmin = isDashboardHostname(hostname);
-    const resetBase = isAdmin
-        ? `https://${hostname}`
-        : (orgInfo?.custom_domain ? `https://${orgInfo.custom_domain}` : portalUrl);
-    const redirectTo = buildAuthCallbackUrl(resetBase, '/reset-password');
+    // Role-based reset domain selection
+    let resetBase: string;
+    if (isOrgAdmin) {
+        const dashboardSite = getDashboardSiteUrl();
+        resetBase = dashboardSite;
+    } else {
+        resetBase = orgInfo?.custom_domain ? `https://${orgInfo.custom_domain}` : portalUrl;
+    }
 
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: 'recovery',
@@ -315,17 +325,17 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
         const { dispatchEmail } = await import('@/lib/email');
         
         // Use AffiliateMango logo/branding for admins, otherwise use organization-specific logo/branding
-        const resolvedLogoUrl = isAdmin 
+        const resolvedLogoUrl = isOrgAdmin 
             ? 'https://partners.affiliatemango.com/affiliatemango_logo.png' 
             : logoUrl;
-        const resolvedLogoHeight = isAdmin ? 44 : logoHeight;
+        const resolvedLogoHeight = isOrgAdmin ? 44 : logoHeight;
         
         const htmlContent = AUTH_LINK_TEMPLATE(
             'Reset Password',
             'Someone requested a password reset for your account. If this was you, click the button below to choose a new password.',
             'Reset Password',
             customActionLink,
-            isAdmin ? `https://${hostname}` : appUrl,
+            resetBase,
             resolvedLogoUrl,
             resolvedLogoHeight
         );
@@ -334,7 +344,7 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
             subject: 'Reset Your Password', 
             html: htmlContent, 
             _rawHtmlOverride: true,
-            brandNameOverride: isAdmin ? 'AffiliateMango' : undefined
+            brandNameOverride: isOrgAdmin ? 'AffiliateMango' : undefined
         });
         console.log('[sendPasswordReset] Email dispatch result:', emailResult);
         if (!emailResult.success) {

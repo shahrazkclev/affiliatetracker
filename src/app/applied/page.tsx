@@ -1,7 +1,11 @@
 import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
+import { getPortalSiteUrl } from '@/lib/auth-urls';
 
-export default function AppliedPage() {
+export default async function AppliedPage() {
+    const portalBase = await getPortalSiteUrl();
+    const loginHref = `${portalBase.replace(/\/$/, '')}/login`;
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#0e0e10] p-4">
             <div className="w-full max-w-md text-center space-y-6">
@@ -22,9 +26,9 @@ export default function AppliedPage() {
                         <li className="flex items-start gap-2"><span className="text-orange-400 shrink-0">3.</span> Sign in and set your password to access the portal</li>
                     </ul>
                 </div>
-                <Link href="/login" className="inline-block text-sm text-orange-400 hover:underline">
+                <a href={loginHref} className="inline-block text-sm text-orange-400 hover:underline">
                     Go to sign in →
-                </Link>
+                </a>
             </div>
         </div>
     );
