@@ -6,53 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { setPassword, verifyOtpCode } from "@/app/login/actions";
+import { setPassword } from "@/app/login/actions";
 import { AlertCircle, Loader2, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react';
 
 function ResetPasswordContent() {
     const searchParams = useSearchParams();
-    const token = searchParams.get('token');
-    const email = searchParams.get('email');
     const returnTo = searchParams.get('return_to');
     const portalUrl = returnTo ? `https://${returnTo}` : '/portal';
     const portalHost = returnTo ?? 'your portal';
 
     const [error, setError] = useState<string | null>(null);
     const [done, setDone] = useState(false);
-    const [verifyingToken, setVerifyingToken] = useState(!!(token && email));
     const [isPending, startTransition] = useTransition();
-
-    // Check session or verify token on mount
-    useEffect(() => {
-        const checkSession = async () => {
-            const { createClient } = await import('@/utils/supabase/client');
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-
-            if (user) {
-                // Active session exists (from /auth/otp) — skip token re-verification
-                setVerifyingToken(false);
-                return;
-            }
-
-            if (token && email) {
-                startTransition(async () => {
-                    const fd = new FormData();
-                    fd.set('email', email);
-                    fd.set('code', token);
-                    const res = await verifyOtpCode(fd);
-                    if (res?.error) {
-                        setError('Reset link is invalid or expired. Please request a new one.');
-                    }
-                    setVerifyingToken(false);
-                });
-            } else {
-                setVerifyingToken(false);
-            }
-        };
-
-        checkSession();
-    }, [token, email]);
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -70,15 +35,6 @@ function ResetPasswordContent() {
             }
             setDone(true);
         });
-    }
-
-    if (verifyingToken) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-[#0e0e10] p-4 text-center space-y-3">
-                <Loader2 className="w-8 h-8 animate-spin text-orange-500 mx-auto" />
-                <p className="text-sm text-zinc-400 font-medium">Verifying reset token…</p>
-            </div>
-        );
     }
 
     return (

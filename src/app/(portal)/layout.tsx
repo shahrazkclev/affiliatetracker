@@ -51,7 +51,7 @@ export default async function PortalLayout({
         );
         const { data } = await admin
             .from("affiliates")
-            .select("id, campaign_id, name, campaign:campaigns(name)")
+            .select("id, campaign_id, name, status, campaign:campaigns(name)")
             .eq("org_id", orgId)
             .eq("email", user.email);
         
@@ -59,6 +59,11 @@ export default async function PortalLayout({
         const cookieStore = await cookies();
         activeCampaignId = cookieStore.get("active_campaign_id")?.value;
     }
+
+    const activeProfile = activeCampaignId 
+        ? profiles.find(p => p.campaign_id === activeCampaignId) || profiles[0]
+        : profiles[0];
+    const isPendingApproval = activeProfile?.status === 'pending';
 
     const branding = await getOrgBranding();
     const primaryColor = branding?.primary_color ?? "#f59e0b";
@@ -124,6 +129,12 @@ export default async function PortalLayout({
                         </div>
                         <ProfileMenu />
                     </header>
+                    {isPendingApproval && (
+                        <div className="bg-amber-500/10 border-b border-amber-500/30 text-amber-300 px-4 py-2 text-xs font-semibold flex items-center justify-center gap-2 z-20 shrink-0">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+                            <span>Application Under Review: Your affiliate account is currently pending approval by the program manager.</span>
+                        </div>
+                    )}
                     <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative">
                         {children}
                     </div>

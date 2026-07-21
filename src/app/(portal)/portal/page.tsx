@@ -1,7 +1,7 @@
 import { createClient, getResolvedOrgId, getActiveAffiliateProfile } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, MousePointerClick, Users, Wallet, Link as LinkIcon, Activity } from "lucide-react";
+import { DollarSign, MousePointerClick, Users, Wallet, Link as LinkIcon, Activity, Clock } from "lucide-react";
 import { PortalBaseLink } from "@/components/PortalBaseLink";
 import { redirect } from "next/navigation";
 
@@ -80,14 +80,43 @@ export default async function PortalHome() {
                     <Activity className="w-5 h-5 text-orange-400" />
                 </div>
                 <div>
-                    <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">
+                    <h2 className="text-2xl font-bold text-zinc-100 tracking-tight flex items-center gap-2">
                         Welcome, {affiliate?.name?.split(' ')[0] || 'Affiliate'}
+                        {affiliate?.status === 'pending' && (
+                            <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold uppercase tracking-wider">
+                                Pending Approval
+                            </span>
+                        )}
                     </h2>
                     <p className="text-sm text-zinc-400 font-medium tracking-wide border-l-2 border-orange-500/50 pl-2 ml-1 mt-1">
                         {affiliate?.campaign?.name ? `Campaign: ${affiliate.campaign.name}` : 'Your affiliate dashboard'}
                     </p>
                 </div>
             </div>
+
+            {/* Application Pending Review Banner */}
+            {affiliate?.status === 'pending' && (
+                <Card className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-amber-500/30 shadow-xl overflow-hidden">
+                    <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+                                <Clock className="w-5 h-5 text-amber-400 animate-pulse" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-base font-bold text-amber-200">Application Under Review</h3>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                        Pending Approval
+                                    </span>
+                                </div>
+                                <p className="text-sm text-zinc-400 mt-1 max-w-2xl leading-relaxed">
+                                    Your application has been received and is waiting for program manager approval. You can explore your portal and set up your password in Settings. Referrals and tracking links will fully activate once your account is approved.
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Link Generator */}
             <PortalBaseLink baseUrl={baseUrl} promoCode={affiliate?.stripe_promo_code} />
