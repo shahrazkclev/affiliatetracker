@@ -23,12 +23,15 @@
 # misc
 .DS_Store
 *.pem
+.cursor/
+scratch/
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+build_output*.log
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -42,12 +45,22 @@ yarn-error.log*
 next-env.d.ts
 marketing-site/
 
-# Database files & scripts
+# Database files & test scripts
 *.sql
 schema.sql
 supabase_billing_migration.sql
-test_api.js
-check_urls.js
-fix_db.js
+test*.js
+test*.ts
+check*.js
+fix*.js
+query*.js
+sync*.js
+trigger*.js
+patch*.py
+inspect*.js
+insert*.js
+get_errors.js
+send_mock_email.js
 superadminafl/
 supabase/.temp
+

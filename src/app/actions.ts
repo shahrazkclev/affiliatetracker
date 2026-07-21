@@ -1,7 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, getResolvedOrgId } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { buildAuthCallbackUrl, getPortalSiteUrl } from '@/lib/auth-urls';
 
@@ -38,7 +38,12 @@ export async function sendSignupConfirmation(formData: FormData): Promise<{ erro
         return { existingUser: true };
     }
 
-    const orgIdStr = (formData.get('org_id') as string)?.trim();
+    let orgIdStr = (formData.get('org_id') as string)?.trim();
+    if (!orgIdStr) {
+        const resolved = await getResolvedOrgId();
+        if (resolved) orgIdStr = resolved;
+    }
+
     const portalUrl = await getPortalSiteUrl();
     const nextPath = orgIdStr ? `/apply/details?org_id=${orgIdStr}` : '/apply/details';
     const emailRedirectTo = buildAuthCallbackUrl(portalUrl, nextPath);
@@ -66,7 +71,12 @@ export async function submitAffiliateApplication(formData: FormData): Promise<{ 
 
     const name = (formData.get('name') as string)?.trim();
     const referralCode = (formData.get('referralCode') as string)?.trim().toLowerCase().replace(/\s+/g, '');
-    const orgId = (formData.get('org_id') as string)?.trim();
+    let orgId = (formData.get('org_id') as string)?.trim();
+
+    if (!orgId) {
+        const resolved = await getResolvedOrgId();
+        if (resolved) orgId = resolved;
+    }
 
     if (!name || !referralCode) return { error: 'All fields are required.' };
     if (!orgId) return { error: 'Organization context is missing. Please use a valid application link.' };

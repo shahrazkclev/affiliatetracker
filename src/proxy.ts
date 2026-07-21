@@ -4,6 +4,11 @@ import { updateSession } from './utils/supabase/middleware'
 export async function proxy(request: NextRequest) {
     const response = await updateSession(request);
 
+    // If updateSession issued a redirect response, return it directly
+    if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
+        return response;
+    }
+
     // ── Affiliate attribution via ?via=refCode+sourceTag ──────────────────────
     // IMPORTANT: We read from request.url (raw) so that %2B stays as + before
     // URL decoding happens. We split on + to separate affiliate code from source.
@@ -81,20 +86,12 @@ export async function proxy(request: NextRequest) {
         if (pathname.startsWith('/admin')) {
             return NextResponse.redirect(new URL('/portal', request.url));
         }
-        // Internally rewrite root to /portal for seamless custom domains
-        if (pathname === '/') {
-            return NextResponse.rewrite(new URL('/portal', request.url));
-        }
     } 
     
     if (isDashboard) {
         // Dashboards CANNOT access /portal
         if (pathname.startsWith('/portal')) {
             return NextResponse.redirect(new URL('/admin', request.url));
-        }
-        // Internally rewrite root to /admin for snappy admin loading
-        if (pathname === '/') {
-            return NextResponse.rewrite(new URL('/admin', request.url));
         }
     }
 

@@ -48,15 +48,24 @@ export async function updateSession(request: NextRequest) {
             // No slug provided on generic domain - this will render an error explicitly downstream 
             // or we could redirect to marketing site. We'll let it route to /portal so it shows 'Organization not found'.
             effectivePath = '/portal';
-        } else if (!effectivePath.startsWith('/login') && !effectivePath.startsWith('/register') && !effectivePath.startsWith('/api') && !effectivePath.startsWith('/_next')) {
-            // Path looks like /xyzstudio or /xyzstudio/settings
-            // We want to rewrite this to /portal or /portal/settings while keeping track of the organization slug.
+        } else if (
+            !effectivePath.startsWith('/login') && 
+            !effectivePath.startsWith('/register') && 
+            !effectivePath.startsWith('/api') && 
+            !effectivePath.startsWith('/_next') &&
+            !effectivePath.startsWith('/apply') &&
+            !effectivePath.startsWith('/applied') &&
+            !effectivePath.startsWith('/reset-password') &&
+            !effectivePath.startsWith('/set-password') &&
+            !effectivePath.startsWith('/auth')
+        ) {
+            // Path looks like /xyzstudio or /xyzstudio/settings or /xyzstudio/apply
             const urlParts = effectivePath.split('/').filter(Boolean);
             const slug = urlParts[0]; // e.g., 'xyzstudio'
-            const restOfPath = urlParts.slice(1).join('/'); // '' or 'settings'
+            const restOfPath = urlParts.slice(1).join('/'); // '' or 'settings' or 'apply'
             
             const rewriteUrl = request.nextUrl.clone();
-            rewriteUrl.pathname = restOfPath ? `/portal/${restOfPath}` : '/portal';
+            rewriteUrl.pathname = restOfPath ? `/${restOfPath}` : '/portal';
             rewriteUrl.searchParams.set('org_slug', slug);
             
             const reqHeaders = new Headers(request.headers);
@@ -68,20 +77,26 @@ export async function updateSession(request: NextRequest) {
                 }
             });
             
-            // Adjust effectivePath so the auth checks below know we are entering the portal
+            // Adjust effectivePath so the auth checks below know we are entering the portal/route
             effectivePath = rewriteUrl.pathname;
         }
-    } else {
-        // Standard behaviors for Dashboard or Custom Domains
+    } else if (isTenantDomain) {
         if (effectivePath === '/') {
-            if (isTenantDomain) {
-                if (user) effectivePath = '/portal';
-                else effectivePath = '/apply';
-            }
-            if (isDashboard) {
-                if (user) effectivePath = '/admin';
-                else effectivePath = '/login';
-            }
+            const rewriteUrl = request.nextUrl.clone();
+            rewriteUrl.pathname = user ? '/portal' : '/apply';
+            supabaseResponse = NextResponse.rewrite(rewriteUrl, {
+                request: { headers: new Headers(request.headers) }
+            });
+            effectivePath = rewriteUrl.pathname;
+        }
+    } else if (isDashboard) {
+        if (effectivePath === '/') {
+            const rewriteUrl = request.nextUrl.clone();
+            rewriteUrl.pathname = user ? '/admin' : '/login';
+            supabaseResponse = NextResponse.rewrite(rewriteUrl, {
+                request: { headers: new Headers(request.headers) }
+            });
+            effectivePath = rewriteUrl.pathname;
         }
     }
 
@@ -97,8 +112,6 @@ export async function updateSession(request: NextRequest) {
 
     // If trying to access admin, check they are an org owner and the specific admin email
     if (user && isAdminRoute) {
-
-
         const { data: org } = await supabase
             .from('organizations')
             .select('id')

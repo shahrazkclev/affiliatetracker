@@ -160,6 +160,19 @@ export default function LoginPage() {
         });
     }
 
+    // Build apply href with query params if available
+    const [applyHref, setApplyHref] = useState('/apply');
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const orgId = params.get('org_id');
+        const orgSlug = params.get('org_slug');
+        if (orgId) {
+            setApplyHref(`/apply?org_id=${encodeURIComponent(orgId)}`);
+        } else if (orgSlug) {
+            setApplyHref(`/apply?org_slug=${encodeURIComponent(orgSlug)}`);
+        }
+    }, []);
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#0e0e10] p-4">
             <Card className="w-full max-w-md bg-zinc-900 border-zinc-800 shadow-2xl">
@@ -285,7 +298,7 @@ export default function LoginPage() {
                 {!isDashboard && step === 'email' && (
                     <div className="pb-6 text-center text-sm">
                         <span className="text-zinc-500">Don't have an account? </span>
-                        <a href="/" className="text-orange-400 font-medium hover:underline">Apply as Affiliate</a>
+                        <a href={applyHref} className="text-orange-400 font-medium hover:underline">Apply as Affiliate</a>
                     </div>
                 )}
             </Card>

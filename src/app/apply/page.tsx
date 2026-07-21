@@ -33,8 +33,10 @@ function AffiliateRegistrationPageInner() {
         const errorDesc = searchParams.get('error_description');
         const code = searchParams.get('code');
 
-        // Clean up URL regardless
-        window.history.replaceState({}, '', '/');
+        // Clean up URL parameters if present
+        if (errorCode || errorDesc || code) {
+            window.history.replaceState({}, '', window.location.pathname);
+        }
 
         // Show error message if Supabase returned one
         const msg = friendlyAuthError(errorCode, errorDesc);
