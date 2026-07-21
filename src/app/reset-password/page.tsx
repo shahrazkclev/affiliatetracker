@@ -22,20 +22,36 @@ function ResetPasswordContent() {
     const [verifyingToken, setVerifyingToken] = useState(!!(token && email));
     const [isPending, startTransition] = useTransition();
 
-    // Auto-verify token on mount if present in URL
+    // Check session or verify token on mount
     useEffect(() => {
-        if (token && email) {
-            startTransition(async () => {
-                const fd = new FormData();
-                fd.set('email', email);
-                fd.set('code', token);
-                const res = await verifyOtpCode(fd);
-                if (res?.error) {
-                    setError('Reset link is invalid or expired. Please request a new one.');
-                }
+        const checkSession = async () => {
+            const { createClient } = await import('@/utils/supabase/client');
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (user) {
+                // Active session exists (from /auth/otp) — skip token re-verification
                 setVerifyingToken(false);
-            });
-        }
+                return;
+            }
+
+            if (token && email) {
+                startTransition(async () => {
+                    const fd = new FormData();
+                    fd.set('email', email);
+                    fd.set('code', token);
+                    const res = await verifyOtpCode(fd);
+                    if (res?.error) {
+                        setError('Reset link is invalid or expired. Please request a new one.');
+                    }
+                    setVerifyingToken(false);
+                });
+            } else {
+                setVerifyingToken(false);
+            }
+        };
+
+        checkSession();
     }, [token, email]);
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

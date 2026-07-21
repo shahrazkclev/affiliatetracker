@@ -88,8 +88,9 @@ export async function sendSignupConfirmation(formData: FormData): Promise<{ erro
         return { error: linkErr.message };
     }
 
-    const rawToken = linkData?.properties?.email_otp ||
-        (linkData?.properties?.action_link ? new URL(linkData.properties.action_link).searchParams.get('token') : null);
+    const rawToken = linkData?.properties?.hashed_token ||
+        (linkData?.properties?.action_link ? new URL(linkData.properties.action_link).searchParams.get('token') : null) ||
+        linkData?.properties?.email_otp;
 
     if (!rawToken) {
         return { error: 'Failed to generate verification token.' };
@@ -214,7 +215,9 @@ export async function submitFullApplication(formData: FormData): Promise<{ error
     if (originHeader) {
         try {
             const u = new URL(originHeader);
-            requestDomain = `${u.protocol}//${u.host}`;
+            if (!u.host.endsWith('.netlify.app')) {
+                requestDomain = `${u.protocol}//${u.host}`;
+            }
         } catch {}
     }
 
@@ -242,8 +245,9 @@ export async function submitFullApplication(formData: FormData): Promise<{ error
         return { error: 'Failed to generate confirmation link: ' + linkErr.message };
     }
 
-    const rawToken = linkData?.properties?.email_otp ||
-        (linkData?.properties?.action_link ? new URL(linkData.properties.action_link).searchParams.get('token') : null);
+    const rawToken = linkData?.properties?.hashed_token ||
+        (linkData?.properties?.action_link ? new URL(linkData.properties.action_link).searchParams.get('token') : null) ||
+        linkData?.properties?.email_otp;
 
     if (!rawToken) {
         return { error: 'Failed to generate verification token.' };

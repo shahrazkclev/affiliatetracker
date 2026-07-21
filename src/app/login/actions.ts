@@ -311,8 +311,9 @@ export async function sendPasswordReset(formData: FormData): Promise<{ error?: s
         return { error: `Failed to generate reset link: ${linkErr.message}` };
     }
 
-    const rawToken = linkData?.properties?.email_otp ||
-        (linkData?.properties?.action_link ? new URL(linkData.properties.action_link).searchParams.get('token') : null);
+    const rawToken = linkData?.properties?.hashed_token ||
+        (linkData?.properties?.action_link ? new URL(linkData.properties.action_link).searchParams.get('token') : null) ||
+        linkData?.properties?.email_otp;
 
     if (!rawToken) {
         return { error: 'Failed to generate reset token.' };
