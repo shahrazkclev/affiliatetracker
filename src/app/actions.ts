@@ -61,6 +61,100 @@ export async function sendSignupConfirmation(formData: FormData): Promise<{ erro
     return {};
 }
 
+/** Complete single-step affiliate application submit */
+export async function submitFullApplication(formData: FormData): Promise<{ error?: string; existingUser?: boolean }> {
+    const supabase = await createClient();
+    const admin = getAdminClient();
+
+    const email = (formData.get('email') as string)?.trim().toLowerCase();
+    const name = (formData.get('name') as string)?.trim();
+    const referralCode = (formData.get('referralCode') as string)?.trim().toLowerCase().replace(/\s+/g, '');
+    let orgId = (formData.get('org_id') as string)?.trim();
+
+    if (!email || !name || !referralCode) return { error: 'All fields are required.' };
+
+    if (!orgId) {
+        const resolved = await getResolvedOrgId();
+        if (resolved) orgId = resolved;
+    }
+
+    if (!orgId) return { error: 'Organization context is missing. Please use a valid application link.' };
+
+    // Check if already registered as an affiliate
+    const { data: existingAffiliate } = await admin
+        .from('affiliates')
+        .select('id, status')
+        .eq('email', email)
+        .maybeSingle();
+
+    if (existingAffiliate) {
+        return { existingUser: true };
+    }
+
+    // Check referral code uniqueness for this org
+    const { data: taken } = await admin
+        .from('affiliates')
+        .select('id')
+        .eq('org_id', orgId)
+        .eq('referral_code', referralCode)
+        .maybeSingle();
+
+    if (taken) return { error: 'That referral code is taken. Please choose another.' };
+
+    // Enforce SaaS Tier Affiliate Limits
+    const { data: orgInfo } = await admin
+        .from('organizations')
+        .select('saas_plans(max_affiliates)')
+        .eq('id', orgId)
+        .single();
+    
+    const maxAffiliates = (orgInfo?.saas_plans as any)?.max_affiliates;
+    if (maxAffiliates !== null && maxAffiliates !== undefined) {
+        const { count } = await admin.from('affiliates').select('*', { count: 'exact', head: true }).eq('org_id', orgId);
+        if ((count || 0) >= maxAffiliates) {
+            return { error: 'This organization is currently not accepting new affiliates.' };
+        }
+    }
+
+    const { data: campaign } = await admin
+        .from('campaigns')
+        .select('id, org_id')
+        .eq('org_id', orgId)
+        .eq('is_default', true)
+        .maybeSingle();
+
+    // Insert pending affiliate application
+    const { error: insertError } = await admin.from('affiliates').insert({
+        user_id: null,
+        org_id: orgId,
+        campaign_id: campaign?.id ?? null,
+        name,
+        email,
+        referral_code: referralCode,
+        status: 'pending',
+    });
+
+    if (insertError) {
+        console.error('[submitFullApplication]', insertError);
+        return { error: 'Failed to create application: ' + insertError.message };
+    }
+
+    // Send confirmation link
+    const portalUrl = await getPortalSiteUrl();
+    const emailRedirectTo = buildAuthCallbackUrl(portalUrl, '/applied');
+
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+            shouldCreateUser: true,
+            emailRedirectTo,
+        },
+    });
+
+    if (otpError) return { error: otpError.message };
+    return {};
+}
+
 /** Submit affiliate application after email is confirmed (session required) */
 export async function submitAffiliateApplication(formData: FormData): Promise<{ error?: string }> {
     const supabase = await createClient();

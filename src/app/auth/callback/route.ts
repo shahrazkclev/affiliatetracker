@@ -62,17 +62,33 @@ export async function GET(request: Request) {
                 return NextResponse.redirect(`${origin}/admin`);
             }
 
-            // Otherwise, check if this user has an affiliate record
-            const { data: affiliate } = await admin
+            // Otherwise, check if this user has an affiliate record (match by user_id or email)
+            const { data: affiliates } = await admin
                 .from('affiliates')
-                .select('id, status')
-                .eq('user_id', data.user.id)
-                .maybeSingle();
+                .select('id, status, user_id')
+                .or(`user_id.eq.${data.user.id},email.eq.${data.user.email}`)
+                .limit(1);
+
+            const affiliate = affiliates && affiliates.length > 0 ? affiliates[0] : null;
+
+            if (affiliate) {
+                // Auto-link user_id if unlinked
+                if (!affiliate.user_id) {
+                    await admin
+                        .from('affiliates')
+                        .update({ user_id: data.user.id })
+                        .eq('id', affiliate.id);
+                }
+
+                // If application is pending review, show confirmation page
+                if (affiliate.status === 'pending') {
+                    return NextResponse.redirect(`${origin}/applied`);
+                }
+            }
 
             if (!affiliate) {
-                // New user — send to fill in application details
-                const target = next.startsWith('/apply/details') ? next : '/apply/details';
-                return NextResponse.redirect(`${origin}${target}`);
+                // No affiliate record found — send to apply
+                return NextResponse.redirect(`${origin}/apply`);
             }
 
             // Check if they have a password set (first login after approval)
