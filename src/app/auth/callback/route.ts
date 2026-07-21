@@ -1,16 +1,47 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
-export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url);
+export async function GET(request: NextRequest) {
+    const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const next = searchParams.get('next') ?? '/portal';
-    // return_to may still be passed in some cases, but we also resolve it from DB below
     const returnToParam = searchParams.get('return_to') ?? '';
 
+    // Resolve domain origin, filtering out netlify preview subdomains
+    const hostHeader = request.headers.get('x-mango-tenant-host') || request.headers.get('host') || request.headers.get('x-forwarded-host') || '';
+    const rawHost = hostHeader.split(',')[0].trim().split(':')[0].toLowerCase();
+    
+    let origin: string;
+    if (rawHost && !rawHost.endsWith('.netlify.app')) {
+        const proto = request.headers.get('x-forwarded-proto') || 'https';
+        origin = `${proto}://${rawHost}`;
+    } else {
+        const { getPortalSiteUrl } = await import('@/lib/auth-urls');
+        origin = await getPortalSiteUrl();
+    }
+
     if (code) {
-        const supabase = await createClient();
+        const redirectUrl = `${origin.replace(/\/$/, '')}${next.startsWith('/') ? next : `/${next}`}`;
+        const response = NextResponse.redirect(redirectUrl);
+
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    getAll() {
+                        return request.cookies.getAll();
+                    },
+                    setAll(cookiesToSet) {
+                        cookiesToSet.forEach(({ name, value, options }) =>
+                            response.cookies.set(name, value, options)
+                        );
+                    },
+                },
+            }
+        );
+
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
         if (!error && data.user) {
@@ -21,7 +52,6 @@ export async function GET(request: Request) {
 
             // Password recovery — look up custom domain from DB and go to reset page
             if (next === '/reset-password') {
-                // Try param first, then look up from DB using the authenticated user
                 let returnTo = returnToParam;
 
                 if (!returnTo) {
@@ -43,12 +73,12 @@ export async function GET(request: Request) {
 
                 const resetUrl = new URL(`${origin}/reset-password`);
                 if (returnTo) resetUrl.searchParams.set('return_to', returnTo);
-                return NextResponse.redirect(resetUrl.toString());
+                return NextResponse.redirect(resetUrl.toString(), { headers: response.headers });
             }
 
-            // Platform owner onboarding — org is provisioned at signup, but user still needs configure step
+            // Platform owner onboarding
             if (next.startsWith('/register/')) {
-                return NextResponse.redirect(`${origin}${next}`);
+                return NextResponse.redirect(`${origin}${next}`, { headers: response.headers });
             }
 
             // Platform owner returning after verification
@@ -59,7 +89,7 @@ export async function GET(request: Request) {
                 .maybeSingle();
 
             if (org) {
-                return NextResponse.redirect(`${origin}/admin`);
+                return NextResponse.redirect(`${origin}/admin`, { headers: response.headers });
             }
 
             // Otherwise, check if this user has an affiliate record (match by user_id or email)
@@ -72,7 +102,6 @@ export async function GET(request: Request) {
             const affiliate = affiliates && affiliates.length > 0 ? affiliates[0] : null;
 
             if (affiliate) {
-                // Auto-link user_id if unlinked
                 if (!affiliate.user_id) {
                     await admin
                         .from('affiliates')
@@ -80,15 +109,13 @@ export async function GET(request: Request) {
                         .eq('id', affiliate.id);
                 }
 
-                // If application is pending review, show confirmation page
                 if (affiliate.status === 'pending') {
-                    return NextResponse.redirect(`${origin}/applied`);
+                    return NextResponse.redirect(`${origin}/applied`, { headers: response.headers });
                 }
             }
 
             if (!affiliate) {
-                // No affiliate record found — send to apply
-                return NextResponse.redirect(`${origin}/apply`);
+                return NextResponse.redirect(`${origin}/apply`, { headers: response.headers });
             }
 
             // Check if they have a password set (first login after approval)
@@ -98,14 +125,12 @@ export async function GET(request: Request) {
             const hasPassword = pwCheck?.[0]?.has_password ?? false;
 
             if (!hasPassword) {
-                // Approved affiliate logging in for first time — set password
-                return NextResponse.redirect(`${origin}/set-password`);
+                return NextResponse.redirect(`${origin}/set-password`, { headers: response.headers });
             }
 
-            // Returning user with password — go to portal
-            return NextResponse.redirect(`${origin}${next}`);
+            return NextResponse.redirect(`${origin}${next}`, { headers: response.headers });
         }
     }
 
-    return NextResponse.redirect(`${origin}/login?error=Could not sign in`);
+    return NextResponse.redirect(`${origin}/login?error=Could+not+sign+in`);
 }
