@@ -49,19 +49,6 @@ export default function LoginPage() {
         const typedEmail = (fd.get('email') as string).trim().toLowerCase();
 
         startTransition(async () => {
-            if (!isDashboard) {
-                // Portal: OTP flow
-                setEmail(typedEmail);
-                const fd2 = new FormData();
-                fd2.set('email', typedEmail);
-                const result = await sendOtpEmail(fd2);
-                if (result?.error) { setError(result.error); return; }
-                setStep('otp');
-                setTimeout(() => otpRefs.current[0]?.focus(), 100);
-                return;
-            }
-
-            // Dashboard: password flow
             const result = await checkLoginStatus(fd);
             if (result.error) { setError(result.error); return; }
             if (result.notAffiliate) { setError('No account found with this email.'); return; }
@@ -74,8 +61,9 @@ export default function LoginPage() {
             } else {
                 const fd2 = new FormData();
                 fd2.set('email', typedEmail);
-                await sendPasswordReset(fd2);
-                setStep('reset-sent');
+                await sendOtpEmail(fd2);
+                setStep('otp');
+                setTimeout(() => otpRefs.current[0]?.focus(), 100);
             }
         });
     }
@@ -137,7 +125,7 @@ export default function LoginPage() {
         });
     }
 
-    // ── Password login (dashboard only) ─────────────────────────────────────
+    // ── Password login (dashboard and portal) ───────────────────────────────
     async function handlePasswordLogin(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setError(null);
@@ -252,8 +240,8 @@ export default function LoginPage() {
                         </div>
                     )}
 
-                    {/* ── Password (dashboard only) ─────────────────────── */}
-                    {step === 'password' && isDashboard && (
+                    {/* ── Password (dashboard and portal) ─────────────────────── */}
+                    {step === 'password' && (
                         <form onSubmit={handlePasswordLogin} className="space-y-4">
                             <div className="flex items-center gap-2 bg-zinc-800/60 border border-zinc-700 px-3 py-2 rounded-lg text-sm text-zinc-400">
                                 <span className="truncate flex-1">{email}</span>
@@ -269,10 +257,23 @@ export default function LoginPage() {
                                 className="w-full bg-orange-600 hover:bg-orange-500 text-white h-11 font-semibold">
                                 {isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Signing in…</> : 'Sign In'}
                             </Button>
-                            <button type="button" onClick={handleForgotPassword} disabled={isPending}
-                                className="w-full text-xs text-zinc-500 hover:text-zinc-300 transition-colors py-1">
-                                Forgot password?
-                            </button>
+                            <div className="flex items-center justify-between pt-1 text-xs">
+                                <button type="button" onClick={handleForgotPassword} disabled={isPending}
+                                    className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                                    Forgot password?
+                                </button>
+                                {!isDashboard && (
+                                    <button type="button" onClick={async () => {
+                                        setError(null);
+                                        const fd2 = new FormData();
+                                        fd2.set('email', email);
+                                        await sendOtpEmail(fd2);
+                                        setStep('otp');
+                                    }} className="text-orange-400 hover:text-orange-300 transition-colors">
+                                        Sign in with code instead
+                                    </button>
+                                )}
+                            </div>
                         </form>
                     )}
 

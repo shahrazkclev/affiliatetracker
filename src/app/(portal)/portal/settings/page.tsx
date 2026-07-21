@@ -2,6 +2,7 @@ import { createClient, getResolvedOrgId, getActiveAffiliateProfile } from "@/uti
 import { NotificationSettings } from "./NotificationSettings";
 import { ProfileSettingsCard } from "./ProfileSettingsCard";
 import { PayoutSettingsCard } from "./PayoutSettingsCard";
+import { PasswordSettingsCard } from "./PasswordSettingsCard";
 import { redirect } from "next/navigation";
 
 export default async function AffiliateSettingsPage() {
@@ -34,12 +35,16 @@ export default async function AffiliateSettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                <ProfileSettingsCard 
-                    affiliateId={affiliate.id}
-                    initialFirstName={firstName}
-                    initialLastName={lastName}
-                    initialEmail={affiliate?.email || user?.email || ''}
-                />
+                <div className="space-y-6">
+                    <ProfileSettingsCard 
+                        affiliateId={affiliate.id}
+                        initialFirstName={firstName}
+                        initialLastName={lastName}
+                        initialEmail={affiliate?.email || user?.email || ''}
+                    />
+
+                    <PasswordSettingsCard />
+                </div>
 
                 <div className="space-y-6">
                     <PayoutSettingsCard 

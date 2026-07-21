@@ -9,9 +9,9 @@ export default function AppliedPage() {
                     <CheckCircle2 className="w-8 h-8 text-green-400" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-zinc-100">Application Submitted!</h1>
+                    <h1 className="text-2xl font-bold text-zinc-100">Email Verified & Application Submitted!</h1>
                     <p className="text-zinc-400 mt-3 leading-relaxed">
-                        Your affiliate application is under review. We'll send you an email once you're approved and ready to start promoting.
+                        Your email has been successfully verified. Your affiliate application is under review, and we'll notify you by email as soon as your account is approved.
                     </p>
                 </div>
                 <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-left space-y-2">

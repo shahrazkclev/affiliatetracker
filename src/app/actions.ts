@@ -139,19 +139,53 @@ export async function submitFullApplication(formData: FormData): Promise<{ error
         return { error: 'Failed to create application: ' + insertError.message };
     }
 
-    // Send confirmation link
+    // Send confirmation link using custom branded HTML email
     const portalUrl = await getPortalSiteUrl();
-    const emailRedirectTo = buildAuthCallbackUrl(portalUrl, '/applied');
+    let appUrl = portalUrl;
+    let logoUrl, logoHeight;
 
-    const { error: otpError } = await supabase.auth.signInWithOtp({
+    const { data: orgData } = await admin.from('organizations').select('logo_url, logo_email_height, custom_domain').eq('id', orgId).maybeSingle();
+    if (orgData?.custom_domain) {
+        appUrl = `https://${orgData.custom_domain}`;
+    }
+    logoUrl = orgData?.logo_url;
+    logoHeight = orgData?.logo_email_height;
+
+    const redirectTo = buildAuthCallbackUrl(appUrl, '/applied');
+
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+        type: 'magiclink',
         email,
-        options: {
-            shouldCreateUser: true,
-            emailRedirectTo,
-        },
+        options: { redirectTo },
     });
 
-    if (otpError) return { error: otpError.message };
+    if (linkErr) {
+        console.error('[submitFullApplication] generateLink error:', linkErr.message);
+        return { error: 'Failed to generate confirmation link: ' + linkErr.message };
+    }
+
+    if (linkData?.properties?.action_link) {
+        const { AUTH_LINK_TEMPLATE } = await import('@/lib/email-templates');
+        const { dispatchEmail } = await import('@/lib/email');
+
+        const htmlContent = AUTH_LINK_TEMPLATE(
+            'Confirm Your Application',
+            `Thank you for applying to join our affiliate program! Click the button below to verify your email address (${email}) and complete your application.`,
+            'Confirm Application & Verify Email',
+            linkData.properties.action_link,
+            appUrl,
+            logoUrl,
+            logoHeight
+        );
+
+        await dispatchEmail(orgId, {
+            to: email,
+            subject: 'Confirm your affiliate application',
+            html: htmlContent,
+            _rawHtmlOverride: true,
+        } as any);
+    }
+
     return {};
 }
 
