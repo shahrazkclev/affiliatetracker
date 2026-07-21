@@ -465,12 +465,19 @@ export async function verifyOtpCode(formData: FormData): Promise<{ error?: strin
 
     if (!email || !code) return { error: 'Email and code are required.' };
 
+    const isTokenHash = code.length > 20 || /^[a-f0-9]{32,64}$/i.test(code);
+
     const supabase = await createClient();
-    const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: code,
-        type: 'magiclink',
-    });
+    const { data, error } = isTokenHash
+        ? await supabase.auth.verifyOtp({
+            token_hash: code,
+            type: 'recovery',
+        })
+        : await supabase.auth.verifyOtp({
+            email,
+            token: code,
+            type: 'magiclink',
+        });
 
     if (error || !data.user) {
         return { error: 'Invalid or expired code. Please request a new one.' };

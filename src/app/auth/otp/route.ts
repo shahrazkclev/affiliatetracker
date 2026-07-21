@@ -9,18 +9,27 @@ export async function GET(request: Request) {
     const next = searchParams.get('next') ?? '/portal';
     const type = (searchParams.get('type') as 'magiclink' | 'recovery') || 'magiclink';
 
-    if (!token || !email) {
+    if (!token) {
         return NextResponse.redirect(`${origin}/login?error=Invalid+login+link`);
     }
 
+    const cleanToken = decodeURIComponent(token);
+    const cleanEmail = email ? decodeURIComponent(email) : '';
+    const isTokenHash = cleanToken.length > 20 || /^[a-f0-9]{32,64}$/i.test(cleanToken);
+
     const supabase = await createClient();
 
-    // Verify the OTP token (extracted from Supabase generateLink's action_link)
-    const { data, error } = await supabase.auth.verifyOtp({
-        email: decodeURIComponent(email),
-        token: decodeURIComponent(token),
-        type,
-    });
+    // Verify OTP (support both hashed PKCE tokens and numeric OTP codes)
+    const { data, error } = isTokenHash
+        ? await supabase.auth.verifyOtp({
+            token_hash: cleanToken,
+            type: type as any,
+        })
+        : await supabase.auth.verifyOtp({
+            email: cleanEmail,
+            token: cleanToken,
+            type: type as any,
+        });
 
     if (error || !data.user) {
         console.error('[/auth/otp] verifyOtp error:', error?.message);

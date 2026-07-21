@@ -11,8 +11,17 @@ export function getDashboardSiteUrl(): string {
 export async function getRequestHostname(): Promise<string> {
     const { headers } = await import('next/headers');
     const h = await headers();
-    const raw = h.get('x-mango-tenant-host') || h.get('x-forwarded-host') || h.get('host') || '';
-    return raw.split(',')[0].trim().split(':')[0].toLowerCase();
+
+    const customHost = h.get('x-mango-tenant-host');
+    if (customHost) return customHost.split(',')[0].trim().split(':')[0].toLowerCase();
+
+    const rawHost = h.get('host') || h.get('x-forwarded-host') || '';
+    const candidates = rawHost.split(',').map(s => s.trim().split(':')[0].toLowerCase());
+
+    const realDomain = candidates.find(c => c && !c.endsWith('.netlify.app'));
+    if (realDomain) return realDomain;
+
+    return candidates[0] || '';
 }
 
 export function isDashboardHostname(hostname: string): boolean {
