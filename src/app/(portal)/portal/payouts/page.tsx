@@ -38,7 +38,7 @@ export default async function AffiliatePayoutsPage({ searchParams }: { searchPar
     // All commissions to compute unpaid balance
     const { data: commissions } = await supabase
         .from('commissions')
-        .select('amount, commission_amount, created_at')
+        .select('amount, commission_amount, status, created_at')
         .eq('affiliate_id', affiliate?.id ?? '');
 
     const payoutMap = (payouts || []).map(p => new Date(p.created_at));
@@ -48,7 +48,7 @@ export default async function AffiliatePayoutsPage({ searchParams }: { searchPar
     
     const unpaid = (commissions || []).reduce((sum, c) => {
         const commDate = new Date(c.created_at);
-        const settled = payoutMap.some(pd => pd >= commDate);
+        const settled = payoutMap.some(pd => pd >= commDate) || c.status === 'paid';
         return sum + (settled ? 0 : Number(c.amount || c.commission_amount || 0));
     }, 0);
     const hasPendingRequest = (requests || []).some(r => r.status === 'pending');

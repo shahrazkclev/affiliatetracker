@@ -23,9 +23,22 @@ export default async function CommissionDetailsPage() {
             .order('created_at', { ascending: false })
         : { data: [] };
 
+    const { data: payouts } = affiliate
+        ? await supabase
+            .from('payouts')
+            .select('amount, created_at')
+            .eq('affiliate_id', affiliate.id)
+        : { data: [] };
+
+    const payoutDates = (payouts || []).map(p => new Date(p.created_at));
+
     const totalEarned = (commissions || []).reduce((s, c) => s + Number(c.commission_amount || c.amount || 0), 0);
     const totalRevenue = (commissions || []).reduce((s, c) => s + Number(c.revenue || 0), 0);
-    const pendingCount = (commissions || []).filter(c => c.status === 'pending').length;
+    const pendingCount = (commissions || []).filter(c => {
+        const commDate = new Date(c.created_at);
+        const isSettled = payoutDates.some(pd => pd >= commDate) || c.status === 'paid' || c.status === 'completed';
+        return !isSettled && c.status !== 'void';
+    }).length;
 
     return (
         <div className="space-y-6 max-w-5xl">
@@ -107,13 +120,20 @@ export default async function CommissionDetailsPage() {
                                         ${Number(c.commission_amount || c.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wider ${
-                                            c.status === 'paid' || c.status === 'completed'
-                                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                        }`}>
-                                            {c.status || 'pending'}
-                                        </span>
+                                        {(() => {
+                                            const commDate = new Date(c.created_at);
+                                            const isPaid = payoutDates.some(pd => pd >= commDate) || c.status === 'paid' || c.status === 'completed';
+                                            const displayStatus = isPaid ? 'paid' : (c.status || 'pending');
+                                            return (
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wider ${
+                                                    displayStatus === 'paid' || displayStatus === 'completed'
+                                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                                }`}>
+                                                    {displayStatus}
+                                                </span>
+                                            );
+                                        })()}
                                     </td>
                                 </tr>
                             ))}

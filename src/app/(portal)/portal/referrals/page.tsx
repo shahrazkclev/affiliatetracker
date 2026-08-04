@@ -30,11 +30,25 @@ export default async function AffiliateCommissionsPage({ searchParams }: { searc
         .eq('affiliate_id', affiliate.id)
         .order('created_at', { ascending: false });
 
+    const { data: payouts } = await supabase
+        .from('payouts')
+        .select('amount, created_at')
+        .eq('affiliate_id', affiliate.id);
+
+    const payoutDates = (payouts || []).map(p => new Date(p.created_at));
+
     const allCommissions = commissions || [];
 
     const totalEarned   = allCommissions.reduce((s, c) => s + Number(c.commission_amount || c.amount || 0), 0);
-    const pendingAmount = allCommissions.filter(c => c.status === 'pending').reduce((s, c) => s + Number(c.commission_amount || c.amount || 0), 0);
-    const paidAmount    = allCommissions.filter(c => c.status === 'paid').reduce((s, c) => s + Number(c.commission_amount || c.amount || 0), 0);
+    const pendingAmount = allCommissions.filter(c => {
+        const commDate = new Date(c.created_at);
+        const isSettled = payoutDates.some(pd => pd >= commDate) || c.status === 'paid';
+        return !isSettled && c.status !== 'void';
+    }).reduce((s, c) => s + Number(c.commission_amount || c.amount || 0), 0);
+    const paidAmount    = allCommissions.filter(c => {
+        const commDate = new Date(c.created_at);
+        return payoutDates.some(pd => pd >= commDate) || c.status === 'paid';
+    }).reduce((s, c) => s + Number(c.commission_amount || c.amount || 0), 0);
 
     const total = allCommissions.length;
     const start = (currentPage - 1) * PAGE_SIZE;
@@ -135,14 +149,21 @@ export default async function AffiliateCommissionsPage({ searchParams }: { searc
                                             {new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wider
-                                                ${c.status === 'paid'
-                                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                                    : c.status === 'void'
-                                                    ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                                                {c.status || 'pending'}
-                                            </span>
+                                            {(() => {
+                                                const commDate = new Date(c.created_at);
+                                                const isPaid = payoutDates.some(pd => pd >= commDate) || c.status === 'paid';
+                                                const displayStatus = isPaid ? 'paid' : (c.status || 'pending');
+                                                return (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wider
+                                                        ${displayStatus === 'paid'
+                                                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                            : displayStatus === 'void'
+                                                            ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                                                        {displayStatus}
+                                                    </span>
+                                                );
+                                            })()}
                                         </td>
                                     </tr>
                                 );

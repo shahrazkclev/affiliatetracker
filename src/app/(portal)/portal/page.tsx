@@ -38,7 +38,7 @@ export default async function PortalHome() {
     // Commissions for this affiliate
     const { data: commissions } = await supabase
         .from('commissions')
-        .select('amount, revenue, status, sub_id, created_at')
+        .select('amount, commission_amount, revenue, status, sub_id, created_at')
         .eq('affiliate_id', affiliate?.id ?? '')
         .order('created_at', { ascending: false });
 
@@ -58,9 +58,14 @@ export default async function PortalHome() {
     // The dashboard continues logic without parsing specific tag-based arrays
 
     // Compute stats
-    const totalCommission = (commissions || []).reduce((s, c) => s + Number(c.amount), 0);
-    const totalPaid = (payouts || []).reduce((s, p) => s + Number(p.amount), 0);
-    const unpaidCommission = Math.max(0, totalCommission - totalPaid);
+    const payoutMap = (payouts || []).map(p => new Date(p.created_at));
+    const totalCommission = (commissions || []).reduce((s, c) => s + Number(c.commission_amount || c.amount || 0), 0);
+    const totalPaid = (payouts || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+    const unpaidCommission = (commissions || []).reduce((sum, c) => {
+        const commDate = new Date(c.created_at);
+        const settled = payoutMap.some(pd => pd >= commDate) || c.status === 'paid';
+        return sum + (settled ? 0 : Number(c.commission_amount || c.amount || 0));
+    }, 0);
     const totalClicks = affiliate?.clicks || 0;
     const payingReferrals = (referrals || []).filter(r => r.status === 'active').length;
 
@@ -164,14 +169,14 @@ export default async function PortalHome() {
                             <tbody className="divide-y divide-zinc-800/30">
                                 {commissions.slice(0, 8).map((c, i) => {
                                     const payoutDates = (payouts || []).map(p => new Date(p.created_at));
-                                    const isPaid = payoutDates.some(pd => pd >= new Date(c.created_at));
+                                    const isPaid = payoutDates.some(pd => pd >= new Date(c.created_at)) || c.status === 'paid';
                                     return (
                                         <tr key={i} className="hover:bg-zinc-800/20">
                                             <td className="px-4 py-2 text-zinc-400 font-mono text-xs">
                                                 {new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
                                             </td>
                                             <td className="px-4 py-2 text-right font-mono text-emerald-400 font-semibold">
-                                                ${Number(c.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                                ${Number(c.commission_amount || c.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                             </td>
                                             <td className="px-4 py-2 text-center">
                                                 <span className={`text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-medium
